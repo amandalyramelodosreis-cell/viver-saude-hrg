@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Viver Saúde · HRG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:#f0f4f8;min-height:100vh;}
+:root{
+  --navy:#0d2137;--teal:#0a7fa8;--teal-light:#e3f4f9;
+  --red:#c0392b;--amber:#d97706;--amber-light:#fef3c7;
+  --green:#15803d;--green-light:#dcfce7;
+  --gray:#64748b;--border:#cbd5e1;--surface:#f8fafc;
+}
+.serif{font-family:'DM Serif Display',serif;}
+input,select,textarea{
+  font-family:'DM Sans',sans-serif;font-size:14px;
+  border:1.5px solid var(--border);border-radius:8px;
+  padding:9px 11px;width:100%;background:white;
+  color:var(--navy);outline:none;transition:border-color .2s;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--teal);box-shadow:0 0 0 3px rgba(10,127,168,.12);
+}
+label{font-size:11px;font-weight:600;color:var(--gray);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;display:block;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:10px 18px;border-radius:8px;border:none;
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .18s;-webkit-tap-highlight-color:transparent;}
+.bp{background:var(--teal);color:white;}.bp:hover{background:#085f80;}
+.bs{background:var(--green);color:white;}.bs:hover{background:#126d34;}
+.bd{background:var(--red);color:white;}.bd:hover{background:#a93226;}
+.bg{background:transparent;color:var(--gray);border:1.5px solid var(--border);}
+.bg:hover{background:var(--surface);}
+.sm{padding:6px 12px;font-size:12px;}
+.card{background:white;border-radius:14px;
+  box-shadow:0 1px 4px rgba(13,33,55,.08);overflow:hidden;}
+.badge{display:inline-flex;align-items:center;gap:3px;
+  padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;}
+.b-uti{background:#fdecea;color:#c0392b;}
+.b-enf{background:#e3f4f9;color:#0a7fa8;}
+.b-pend{background:#fef3c7;color:#92400e;}
+.b-ok{background:#dcfce7;color:#15803d;}
+.b-alta{background:#dcfce7;color:#15803d;}
+.b-ac{background:#fde8d8;color:#9a3412;}
+.chip{font-size:11px;padding:2px 8px;border-radius:999px;
+  border:1px solid var(--border);color:var(--navy);
+  font-weight:500;white-space:nowrap;}
+.sec-title{font-size:11px;font-weight:700;color:var(--teal);
+  text-transform:uppercase;letter-spacing:1px;
+  padding-bottom:6px;border-bottom:1.5px solid var(--teal-light);
+  margin-bottom:10px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.hidden{display:none!important;}
+.spin{animation:spin 1s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Header */
+#header{background:linear-gradient(135deg,#0d2137 0%,#0a4060 100%);
+  padding:16px 16px 12px;position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 12px rgba(13,33,55,.2);}
+#header .title{font-family:'DM Serif Display',serif;font-size:17px;color:white;}
+#header .subtitle{font-size:11px;color:rgba(255,255,255,.55);margin-top:1px;}
+.stat-bubble{text-align:center;padding:4px 10px;border-radius:8px;}
+.stat-bubble .val{font-size:17px;font-weight:700;}
+.stat-bubble .lbl{font-size:9px;color:rgba(255,255,255,.6);}
+.tab-btn{padding:6px 14px;border-radius:999px;border:none;
+  white-space:nowrap;font-size:12px;cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-weight:600;
+  -webkit-tap-highlight-color:transparent;}
+.tab-btn.active{background:white;color:var(--navy);}
+.tab-btn.inactive{background:rgba(255,255,255,.12);color:rgba(255,255,255,.75);}
+/* Toast */
+#toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);
+  z-index:9999;background:var(--green);color:white;
+  padding:8px 20px;border-radius:999px;font-size:13px;font-weight:600;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);white-space:nowrap;
+  transition:opacity .3s;}
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(13,33,55,.55);
+  z-index:999;display:flex;align-items:center;
+  justify-content:center;padding:24px;}
+/* Scrollable content */
+#content{padding:16px 16px 80px;}
+/* Patient card */
+.pcard{margin-bottom:10px;cursor:pointer;}
+.pcard-body{padding:12px 14px;}
+.pcard-detail{border-top:1px solid var(--border);
+  padding:12px 14px;background:var(--surface);}
+.dr-row{display:flex;gap:8px;margin-bottom:6px;}
+.dr-label{font-size:11px;color:var(--gray);min-width:130px;font-weight:600;}
+.dr-val{font-size:12px;color:var(--navy);}
+/* KPI */
+.kpi{padding:14px 16px;}
+.kpi .val{font-size:26px;font-family:'DM Serif Display',serif;font-weight:700;}
+.kpi .lbl{font-size:11px;color:var(--gray);margin-top:2px;font-weight:500;}
+.minikpi{padding:12px 14px;}
+.minikpi .val{font-size:20px;font-family:'DM Serif Display',serif;color:var(--teal);font-weight:700;}
+.minikpi .lbl{font-size:10px;color:var(--gray);margin-top:2px;font-weight:500;}
+/* Esp tags */
+.esp-tag{padding:5px 12px;border-radius:999px;border:1.5px solid;
+  font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;
+  font-weight:500;-webkit-tap-highlight-color:transparent;}
+/* Check row */
+.check-row{display:flex;align-items:center;gap:8px;
+  border:1.5px solid var(--border);border-radius:8px;
+  padding:9px 10px;cursor:pointer;}
+/* Sub tabs */
+.subtab{padding:7px 16px;border-radius:8px;border:1.5px solid;
+  font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;
+  font-weight:600;-webkit-tap-highlight-color:transparent;}
+/* Bar chart */
+.bar-bg{height:6px;background:var(--border);border-radius:99px;}
+.bar-fill{height:6px;background:var(--teal);border-radius:99px;}
+/* Print */
+@media print{
+  #header,.np{display:none!important;}
+  body{background:white;}
+  .card{box-shadow:none;border:1px solid #ddd;}
+  #content{padding:0;}
+}
+/* Empty state */
+.empty{text-align:center;padding:48px 0;color:var(--gray);}
+.empty .icon{font-size:32px;}
+.empty .msg{margin-top:8px;font-size:13px;}
+/* Error */
+.err-box{margin:16px;padding:14px;background:#fdecea;
+  border-radius:10px;color:var(--red);font-size:13px;}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast" class="hidden"></div>
+
+<!-- APP ROOT -->
+<div id="app"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// FIREBASE REST
+// ═══════════════════════════════════════════════════════════════
+const PROJECT_ID = "viver-saude---hrg";
+const API_KEY    = "AIzaSyDRQt4PiG94l7xPFbNfkeL-FXUIytz6IO4";
+const BASE      = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+
+function toFS(obj) {
+  const fields = {};
+  for (const [k,v] of Object.entries(obj)) {
+    if (v === null || v === undefined) fields[k] = {nullValue:null};
+    else if (typeof v === "boolean")   fields[k] = {booleanValue:v};
+    else if (typeof v === "number")    fields[k] = {integerValue:String(v)};
+    else if (Array.isArray(v))         fields[k] = {arrayValue:{values:v.map(i=>({stringValue:String(i)}))}};
+    else                               fields[k] = {stringValue:String(v)};
+  }
+  return {fields};
+}
+function fromFS(doc) {
+  const obj = {id: doc.name.split("/").pop()};
+  for (const [k,v] of Object.entries(doc.fields||{})) {
+    if      (v.stringValue  !== undefined) obj[k] = v.stringValue;
+    else if (v.booleanValue !== undefined) obj[k] = v.booleanValue;
+    else if (v.integerValue !== undefined) obj[k] = Number(v.integerValue);
+    else if (v.nullValue    !== undefined) obj[k] = null;
+    else if (v.arrayValue   !== undefined) obj[k] = (v.arrayValue.values||[]).map(i=>i.stringValue||"");
+    else obj[k] = null;
+  }
+  return obj;
+}
+async function fsGet(col) {
+  const r = await fetch(`${BASE}/${col}?key=${API_KEY}`);
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error?.message||"Erro ao buscar");
+  return (d.documents||[]).map(fromFS);
+}
+async function fsAdd(col, data) {
+  const r = await fetch(`${BASE}/${col}?key=${API_KEY}`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(toFS(data))
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error?.message||"Erro ao salvar");
+  return fromFS(d);
+}
+async function fsUpdate(col, id, data) {
+  const fs = toFS(data);
+  const mask = Object.keys(fs.fields).map(k=>`updateMask.fieldPaths=${encodeURIComponent(k)}`).join("&");
+  const r = await fetch(`${BASE}/${col}/${id}?key=${API_KEY}&${mask}`, {
+    method:"PATCH", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(fs)
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error?.message||"Erro ao atualizar");
+  return fromFS(d);
+}
+async function fsDel(col, id) {
+  const r = await fetch(`${BASE}/${col}/${id}?key=${API_KEY}`, {method:"DELETE"});
+  if (!r.ok) { const d=await r.json(); throw new Error(d.error?.message||"Erro ao deletar"); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let STATE = {
+  session: null,
+  active: [],
+  discharged: [],
+  loading: true,
+  error: "",
+  tab: "censo",          // censo | novo | relatorio
+  subTab: "internados",  // internados | concluidos
+  editing: null,
+  discharging: null,
+  saving: false,
+  filterSetor: "Todos",
+  filterPend: false,
+  filterSearch: "",
+  dSearch: "",
+  reportMode: "mensal",
+  reportFrom: "2026-05-01",
+  reportTo: tod(),
+  openCards: new Set(),
+};
+
+function setState(patch) {
+  STATE = {...STATE, ...patch};
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════
+function tod() { return new Date().toISOString().split("T")[0]; }
+function fmt(d) { return d ? new Date(d+"T12:00:00").toLocaleDateString("pt-BR") : "—"; }
+function diffDays(a,b) {
+  return Math.max(0,Math.floor((new Date((b||tod())+"T12:00:00")-new Date(a+"T12:00:00"))/86400000));
+}
+function monthOf(d) { const [y,m]=d.split("-"); return `${m}/${y}`; }
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.remove("hidden");
+  setTimeout(()=>t.classList.add("hidden"), 2500);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════
+async function loadData() {
+  setState({loading:true, error:""});
+  try {
+    const [a,d] = await Promise.all([fsGet("pacientes_ativos"), fsGet("pacientes_alta")]);
+    setState({active:a, discharged:d, loading:false});
+  } catch(e) {
+    setState({error: e.message, loading:false});
+  }
+}
+
+let pollTimer = null;
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(loadData, 30000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+const ESPS = ["Cardiologia","Clínica Médica","Neurologia","Ortopedia","Obstetrícia","Urologia",
+  "Ginecologia","Oncologia","Nefrologia","Pneumologia","Gastroenterologia","Infectologia",
+  "Pediatria","Cirurgia Geral","Cirurgia Vascular","Outro"];
+const TIPOS = ["Ortopédico","Urológico","Obstétrico","Cardíaco","Neurológico","Geral",
+  "Ginecológico","Vascular","Torácico","Outro"];
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER ENGINE
+// ═══════════════════════════════════════════════════════════════
+function render() {
+  const app = document.getElementById("app");
+  if (!STATE.session) {
+    // Só renderiza o login se ainda não estiver na tela
+    if (!document.getElementById("lbtn")) {
+      app.innerHTML = renderLogin();
+      bindLogin();
+    }
+    return;
+  }
+
+  let content = "";
+  if (STATE.tab === "novo" || STATE.editing) content = renderForm();
+  else if (STATE.tab === "relatorio")        content = renderReport();
+  else                                        content = renderCenso();
+
+  app.innerHTML = renderHeader() + `<div id="content">${content}</div>`;
+  if (STATE.discharging) app.innerHTML += renderAltaModal();
+
+  bindAll();
+}
+
+// ── LOGIN ──────────────────────────────────────────────────────
+function renderLogin() {
+  return `
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#0d2137 0%,#0a4060 60%,#0a7fa8 100%);padding:24px;">
+    <div style="width:100%;max-width:360px;">
+      <div style="text-align:center;margin-bottom:36px;">
+        <div style="width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.12);
+          display:flex;align-items:center;justify-content:center;margin:0 auto 16px;
+          font-size:28px;border:1.5px solid rgba(255,255,255,.2);">🏥</div>
+        <div class="serif" style="font-size:26px;color:white;">Viver Saúde</div>
+        <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:4px;">
+          Governança Clínica · Hospital Rio Grande</div>
+      </div>
+      <div class="card" style="padding:28px;">
+        <div style="margin-bottom:16px;"><label>Usuário</label>
+          <input id="lu" placeholder="seu.usuario" autocomplete="username"/></div>
+        <div style="margin-bottom:20px;"><label>Senha</label>
+          <input id="lp" type="password" placeholder="sua senha"/></div>
+        <div id="lerr" class="hidden" style="color:var(--red);font-size:12px;margin-bottom:12px;">
+          ⚠ Credenciais inválidas.</div>
+        <button class="btn bp" id="lbtn" style="width:100%;">Entrar</button>
+        <div style="margin-top:16px;font-size:11px;color:var(--gray);text-align:center;">
+          moderadora/viver2026 · equipe1/hosp123 · equipe2/hosp456</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+const USERS = [
+  {user:"moderadora",pass:"viver2026",role:"moderadora",nome:"Dra. Admin"},
+  {user:"equipe1",   pass:"hosp123",  role:"equipe",    nome:"Equipe HRG"},
+  {user:"equipe2",   pass:"hosp456",  role:"equipe",    nome:"Equipe HRG 2"},
+];
+
+function bindLogin() {
+  const go = () => {
+    const u=document.getElementById("lu").value;
+    const p=document.getElementById("lp").value;
+    const f=USERS.find(x=>x.user===u&&x.pass===p);
+    if (f) {
+      setState({session:f});
+      loadData().then(startPolling);
+    } else {
+      document.getElementById("lerr").classList.remove("hidden");
+    }
+  };
+  document.getElementById("lbtn").onclick = go;
+  document.getElementById("lp").onkeydown = e => e.key==="Enter"&&go();
+}
+
+// ── HEADER ─────────────────────────────────────────────────────
+function renderHeader() {
+  const {session,active,discharged,tab,loading} = STATE;
+  const isMod = session?.role==="moderadora";
+  const uti  = active.filter(p=>p.setor==="UTI").length;
+  const pend = active.filter(p=>p.pendencia).length;
+  const tabs = [
+    {k:"censo",l:"📋 Censo"},
+    ...(isMod?[{k:"novo",l:"+ Internação"}]:[]),
+    {k:"relatorio",l:"📊 Relatórios"},
+  ];
+  return `
+  <div id="header" class="np">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div class="title">Viver Saúde · HRG</div>
+        <div class="subtitle">${esc(session.nome)} · ${isMod?"Moderadora":"Equipe"} · ${loading?"sincronizando...":"● ao vivo"}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <div class="stat-bubble" style="background:rgba(255,255,255,.1);">
+          <div class="val" style="color:white;">${active.length}</div><div class="lbl">ATI</div></div>
+        <div class="stat-bubble" style="background:rgba(192,57,43,.3);">
+          <div class="val" style="color:#ff7b72;">${uti}</div><div class="lbl">UTI</div></div>
+        ${pend>0?`<div class="stat-bubble" style="background:rgba(217,119,6,.3);">
+          <div class="val" style="color:#fbbf24;">${pend}</div><div class="lbl">PEN</div></div>`:""}
+        <div class="stat-bubble" style="background:rgba(21,128,61,.25);">
+          <div class="val" style="color:#86efac;">${discharged.length}</div><div class="lbl">ALTAS</div></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;">
+      ${tabs.map(t=>`<button class="tab-btn ${tab===t.k?"active":"inactive"}" data-tab="${t.k}">${t.l}</button>`).join("")}
+      <button id="btn-refresh" style="padding:6px 10px;border-radius:999px;border:none;font-size:14px;
+        cursor:pointer;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);margin-left:4px;">↻</button>
+      <button id="btn-logout" style="padding:6px 10px;border-radius:999px;border:none;font-size:11px;
+        cursor:pointer;font-family:'DM Sans',sans-serif;
+        background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);">Sair</button>
+    </div>
+  </div>`;
+}
+
+// ── CENSO ──────────────────────────────────────────────────────
+function renderCenso() {
+  const {active,discharged,subTab,filterSetor,filterPend,filterSearch,dSearch,error,loading} = STATE;
+  if (loading) return `<div class="empty"><div class="spin" style="font-size:28px;">⟳</div>
+    <div class="msg">Conectando ao Firebase...</div></div>`;
+  if (error) return `<div class="err-box">⚠ ${esc(error)}
+    <button class="btn bd sm" id="btn-retry" style="margin-left:8px;">Tentar novamente</button></div>`;
+
+  // filter
+  const fa = active.filter(p=>{
+    if(filterSetor!=="Todos"&&p.setor!==filterSetor) return false;
+    if(filterPend&&!p.pendencia) return false;
+    if(filterSearch){const q=filterSearch.toLowerCase();
+      return (p.nome||"").toLowerCase().includes(q)||(p.prontuario||"").toLowerCase().includes(q)||
+             (p.diagnosticoPrincipal||"").toLowerCase().includes(q);}
+    return true;
+  });
+  const fd = discharged.filter(p=>{
+    if(!dSearch) return true; const q=dSearch.toLowerCase();
+    return (p.nome||"").toLowerCase().includes(q)||(p.prontuario||"").toLowerCase().includes(q);
+  });
+
+  const avgPerm = discharged.length
+    ? (discharged.reduce((a,p)=>a+diffDays(p.dataInternamento,p.dataAlta),0)/discharged.length).toFixed(1)+"d"
+    : "—";
+  const thisMonth = discharged.filter(p=>p.dataAlta&&monthOf(p.dataAlta)===monthOf(tod())).length;
+
+  return `
+  <!-- Sub tabs -->
+  <div style="display:flex;gap:8px;margin-bottom:14px;">
+    <button class="subtab" data-subtab="internados"
+      style="background:${subTab==="internados"?"var(--navy)":"white"};
+             color:${subTab==="internados"?"white":"var(--gray)"};
+             border-color:${subTab==="internados"?"var(--navy)":"var(--border)"};">
+      🏥 Internados (${active.length})</button>
+    <button class="subtab" data-subtab="concluidos"
+      style="background:${subTab==="concluidos"?"var(--navy)":"white"};
+             color:${subTab==="concluidos"?"white":"var(--gray)"};
+             border-color:${subTab==="concluidos"?"var(--navy)":"var(--border)"};">
+      ✅ Concluídos (${discharged.length})</button>
+  </div>
+
+  ${subTab==="internados" ? `
+    <!-- Filtros -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+      <input id="fsearch" placeholder="🔍 Nome, prontuário, diagnóstico..."
+        value="${esc(filterSearch)}" style="flex:2;min-width:160px;"/>
+      <select id="fsetor" style="flex:1;min-width:90px;">
+        <option${filterSetor==="Todos"?" selected":""}>Todos</option>
+        <option${filterSetor==="UTI"?" selected":""}>UTI</option>
+        <option${filterSetor==="Enfermaria"?" selected":""}>Enfermaria</option>
+      </select>
+      <button id="fpend" style="padding:9px 12px;border-radius:8px;border:1.5px solid;font-size:12px;
+        cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;
+        background:${filterPend?"var(--amber-light)":"white"};
+        color:${filterPend?"var(--amber)":"var(--gray)"};
+        border-color:${filterPend?"var(--amber)":"var(--border)"};">⚠ Pendentes</button>
+    </div>
+    ${fa.length===0
+      ? `<div class="empty"><div class="icon">🏥</div><div class="msg">Nenhum paciente internado no momento.</div></div>`
+      : fa.map(p=>renderCard(p,false)).join("")}
+  ` : `
+    <!-- Concluídos -->
+    <div style="margin-bottom:12px;">
+      <input id="dsearch" placeholder="🔍 Buscar nos atendimentos concluídos..."
+        value="${esc(dSearch)}"/>
+    </div>
+    <div class="grid3" style="margin-bottom:16px;">
+      <div class="card minikpi"><div class="val">${discharged.length}</div><div class="lbl">Total altas</div></div>
+      <div class="card minikpi"><div class="val">${avgPerm}</div><div class="lbl">Média perm.</div></div>
+      <div class="card minikpi"><div class="val">${thisMonth}</div><div class="lbl">Este mês</div></div>
+    </div>
+    ${fd.length===0
+      ? `<div class="empty"><div class="icon">✅</div><div class="msg">Nenhum atendimento concluído ainda.</div></div>`
+      : fd.map(p=>renderCard(p,true)).join("")}
+  `}`;
+}
+
+function renderCard(p, discharged) {
+  const dias = discharged ? diffDays(p.dataInternamento,p.dataAlta) : diffDays(p.dataInternamento);
+  const open = STATE.openCards.has(p.id);
+  const isMod = STATE.session?.role==="moderadora";
+  const borderColor = discharged?"var(--green)":p.setor==="UTI"?"var(--red)":"var(--teal)";
+  return `
+  <div class="card pcard" style="border-left:4px solid ${borderColor};" data-id="${esc(p.id)}">
+    <div class="pcard-body" data-toggle="${esc(p.id)}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="flex:1;">
+          <div style="font-weight:600;font-size:14px;color:var(--navy);">${esc(p.nome)}</div>
+          <div style="font-size:12px;color:var(--gray);margin-top:2px;">
+            ${esc(p.prontuario)} · ${esc(p.idade)}a · ${esc(p.sexo)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          ${discharged
+            ? `<span class="badge b-alta">✓ Alta ${fmt(p.dataAlta)}</span>`
+            : `<span class="badge ${p.setor==="UTI"?"b-uti":"b-enf"}">${esc(p.setor)}</span>`}
+          ${p.pendencia&&!discharged?`<span class="badge b-pend">⚠ Pendência</span>`:""}
+        </div>
+      </div>
+      <div style="margin-top:6px;font-size:12px;color:var(--navy);font-weight:500;">
+        ${esc(p.diagnosticoPrincipal)}</div>
+      <div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="chip">📅 ${dias}d</span>
+        ${!discharged&&p.dataAltaPrevista?`<span class="chip">🏠 Prev: ${fmt(p.dataAltaPrevista)}</span>`:""}
+        ${discharged?`<span class="chip" style="background:var(--green-light);">✓ Alta: ${fmt(p.dataAlta)}</span>`:""}
+        ${p.exameAlto?`<span class="chip" style="background:var(--amber-light);">🔬 Exame AC</span>`:""}
+        ${p.medicacaoAlto?`<span class="chip" style="background:var(--amber-light);">💊 Med AC</span>`:""}
+        ${p.procedimentoCirurgico?`<span class="chip" style="background:#fde8d8;">🔪 ${esc(p.tipoCirurgia||"Cirurgia")}</span>`:""}
+      </div>
+    </div>
+    ${open ? `
+    <div class="pcard-detail">
+      ${drRow("Especialidade(s)", (p.especialidades||[]).join(", ")||"—")}
+      ${drRow("Internamento", fmt(p.dataInternamento))}
+      ${discharged?drRow("Data alta", fmt(p.dataAlta)):""}
+      ${drRow("Permanência", dias+" dia(s)")}
+      ${p.diagnosticosSecundarios?drRow("Diag. secundários", p.diagnosticosSecundarios):""}
+      ${p.pendencia?`<div class="dr-row" style="background:var(--amber-light);padding:4px 8px;border-radius:6px;">
+        <span class="dr-label">⚠ Pendência</span><span class="dr-val">${esc(p.pendencia)}</span></div>`:""}
+      ${drRow("Exame alto custo", p.exameAlto?"✓ Sim":"Não")}
+      ${drRow("Med. alto custo", p.medicacaoAlto?"✓ Sim":"Não")}
+      ${drRow("Proc. invasivo", p.procedimentoInvasivo?"✓ Sim":"Não")}
+      ${drRow("Proc. cirúrgico", p.procedimentoCirurgico?"✓ "+(p.tipoCirurgia||"Sim"):"Não")}
+      ${p.observacoes?drRow("Observações", p.observacoes):""}
+      ${isMod&&!discharged?`
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+        <button class="btn bg sm" data-edit="${esc(p.id)}">✏ Editar</button>
+        <button class="btn bs sm" data-discharge="${esc(p.id)}">🏠 Dar Alta</button>
+        <button class="btn bd sm" data-delete="${esc(p.id)}">🗑 Remover</button>
+      </div>`:""}
+    </div>` : ""}
+  </div>`;
+}
+
+function drRow(label, val) {
+  return `<div class="dr-row"><span class="dr-label">${label}</span><span class="dr-val">${esc(val)}</span></div>`;
+}
+
+// ── FORM ───────────────────────────────────────────────────────
+function renderForm() {
+  const p = STATE.editing || {};
+  const esps = p.especialidades || [];
+  const saving = STATE.saving;
+  return `
+  <div style="padding:16px 16px 80px;">
+    <div class="serif" style="font-size:20px;color:var(--navy);margin-bottom:20px;">
+      ${STATE.editing?"Editar Paciente":"Nova Internação"}</div>
+
+    <div style="margin-bottom:20px;">
+      <div class="sec-title">Identificação</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div><label>Nome completo</label>
+          <input id="f-nome" value="${esc(p.nome||"")}" placeholder="Nome do paciente"/></div>
+        <div class="grid3">
+          <div><label>Prontuário</label><input id="f-pron" value="${esc(p.prontuario||"")}" placeholder="PRN-00000"/></div>
+          <div><label>Idade</label><input id="f-idade" type="number" value="${esc(p.idade||"")}"/></div>
+          <div><label>Sexo</label><select id="f-sexo">
+            <option${(p.sexo||"F")==="F"?" selected":""} value="F">F</option>
+            <option${p.sexo==="M"?" selected":""} value="M">M</option>
+          </select></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div class="sec-title">Internamento</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="grid2">
+          <div><label>Data internamento</label>
+            <input id="f-din" type="date" value="${esc(p.dataInternamento||tod())}"/></div>
+          <div><label>Alta prevista</label>
+            <input id="f-dap" type="date" value="${esc(p.dataAltaPrevista||"")}"/></div>
+        </div>
+        <div><label>Setor</label><select id="f-setor">
+          <option${(p.setor||"Enfermaria")==="Enfermaria"?" selected":""}>Enfermaria</option>
+          <option${p.setor==="UTI"?" selected":""}>UTI</option>
+        </select></div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div class="sec-title">Especialidade(s)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;" id="esp-container">
+        ${ESPS.map(e=>`
+          <button class="esp-tag" data-esp="${esc(e)}"
+            style="background:${esps.includes(e)?"var(--teal)":"white"};
+                   color:${esps.includes(e)?"white":"var(--gray)"};
+                   border-color:${esps.includes(e)?"var(--teal)":"var(--border)"};">${esc(e)}</button>
+        `).join("")}
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div class="sec-title">Diagnósticos</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div><label>Diagnóstico principal</label>
+          <input id="f-diag" value="${esc(p.diagnosticoPrincipal||"")}" placeholder="Ex: Insuficiência Cardíaca"/></div>
+        <div><label>Diagnósticos secundários</label>
+          <textarea id="f-diag2" rows="2" placeholder="Comorbidades...">${esc(p.diagnosticosSecundarios||"")}</textarea></div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div class="sec-title">Pendências e Alertas</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div><label>Pendência</label>
+          <input id="f-pend" value="${esc(p.pendencia||"")}" placeholder="Deixe em branco se não houver"/></div>
+        <div class="grid2">
+          ${checkRow("f-exame",  "🔬 Exame alto custo",       p.exameAlto)}
+          ${checkRow("f-med",    "💊 Medicação alto custo",    p.medicacaoAlto)}
+          ${checkRow("f-inv",    "🩺 Proc. invasivo",          p.procedimentoInvasivo)}
+          ${checkRow("f-cir",    "🔪 Proc. cirúrgico",         p.procedimentoCirurgico)}
+        </div>
+        <div id="f-tipo-row" style="${p.procedimentoCirurgico?"":"display:none"}">
+          <label>Tipo de cirurgia</label>
+          <select id="f-tipo">
+            <option value="">Selecione...</option>
+            ${TIPOS.map(t=>`<option${p.tipoCirurgia===t?" selected":""}>${esc(t)}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div class="sec-title">Observações</div>
+      <textarea id="f-obs" rows="3" placeholder="Notas clínicas, intercorrências...">${esc(p.observacoes||"")}</textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;">
+      <button class="btn bg" style="flex:1;" id="f-cancel">Cancelar</button>
+      <button class="btn bp" style="flex:2;opacity:${saving?.5:1};" id="f-save">
+        ${saving?"⏳ Salvando...":"✓ Salvar"}</button>
+    </div>
+  </div>`;
+}
+
+function checkRow(id, label, checked) {
+  return `<label class="check-row" for="${id}"
+    style="background:${checked?"var(--amber-light)":"var(--surface)"};
+           border-color:${checked?"var(--amber)":"var(--border)"};">
+    <input type="checkbox" id="${id}" ${checked?"checked":""} style="width:14px;accent-color:var(--amber);"/>
+    <span style="font-size:12px;font-weight:500;color:var(--navy);">${label}</span>
+  </label>`;
+}
+
+// ── ALTA MODAL ─────────────────────────────────────────────────
+function renderAltaModal() {
+  const p = STATE.discharging;
+  const saving = STATE.saving;
+  return `
+  <div class="modal-bg">
+    <div class="card" style="width:100%;max-width:360px;padding:28px;">
+      <div class="serif" style="font-size:18px;color:var(--navy);margin-bottom:4px;">Confirmar Alta</div>
+      <div style="font-size:13px;color:var(--gray);margin-bottom:20px;">${esc(p.nome)}</div>
+      <div><label>Data da alta</label>
+        <input type="date" id="alta-date" value="${tod()}" max="${tod()}"/></div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button class="btn bg" style="flex:1;" id="alta-cancel">Cancelar</button>
+        <button class="btn bs" style="flex:2;opacity:${saving?.5:1};" id="alta-confirm">
+          ${saving?"⏳ Salvando...":"✓ Confirmar Alta"}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── RELATÓRIO ──────────────────────────────────────────────────
+function renderReport() {
+  const {active,discharged,reportMode,reportFrom,reportTo} = STATE;
+  const all = [...active,...discharged];
+
+  const getRange = () => {
+    const n=new Date(),y=n.getFullYear(),m=n.getMonth();
+    if(reportMode==="mensal")     return[new Date(y,m,1),    new Date(y,m+1,0)];
+    if(reportMode==="trimestral") return[new Date(y,m-2,1),  new Date(y,m+1,0)];
+    if(reportMode==="semestral")  return[new Date(y,m-5,1),  new Date(y,m+1,0)];
+    if(reportMode==="anual")      return[new Date(y,0,1),     new Date(y,11,31)];
+    return[new Date(reportFrom+"T00:00:00"),new Date(reportTo+"T23:59:59")];
+  };
+  const [from,to] = getRange();
+  const ip = p => { const d=new Date(p.dataInternamento+"T12:00:00"); return d>=from&&d<=to; };
+  const pp=all.filter(ip), pd=discharged.filter(ip);
+  const total=pp.length, totalAltas=pd.length;
+  const dias=Math.max(1,Math.ceil((to-from)/86400000));
+  const mediaDia=(total/dias).toFixed(1);
+  const mediaPerm=totalAltas?(pd.reduce((a,p)=>a+diffDays(p.dataInternamento,p.dataAlta),0)/totalAltas).toFixed(1):"—";
+
+  const espC={};pp.forEach(p=>(p.especialidades||[]).forEach(e=>{espC[e]=(espC[e]||0)+1;}));
+  const espTop=Object.entries(espC).sort((a,b)=>b[1]-a[1]);
+  const cirC={};pp.filter(p=>p.procedimentoCirurgico&&p.tipoCirurgia).forEach(p=>{cirC[p.tipoCirurgia]=(cirC[p.tipoCirurgia]||0)+1;});
+  const lbl={mensal:"Mensal",trimestral:"Trimestral",semestral:"Semestral",anual:"Anual",custom:"Personalizado"}[reportMode];
+
+  const modeBtn = m => `
+    <button class="tab-btn ${reportMode===m?"active":"inactive"}" data-rmode="${m}"
+      style="background:${reportMode===m?"var(--navy)":"white"};
+             color:${reportMode===m?"white":"var(--gray)"};
+             border:1.5px solid ${reportMode===m?"var(--navy)":"var(--border)"};
+             border-radius:999px;padding:6px 14px;font-size:12px;">
+      ${m==="custom"?"📅 Personalizado":m.charAt(0).toUpperCase()+m.slice(1)}</button>`;
+
+  return `
+  <div class="np">
+    <div class="serif" style="font-size:20px;color:var(--navy);margin-bottom:4px;">Relatórios</div>
+    <div style="font-size:12px;color:var(--gray);margin-bottom:14px;">Hospital Rio Grande · Viver Saúde</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+      ${["mensal","trimestral","semestral","anual","custom"].map(modeBtn).join("")}
+    </div>
+    ${reportMode==="custom"?`
+    <div class="grid2" style="margin-bottom:12px;">
+      <div><label>De</label><input type="date" id="r-from" value="${reportFrom}"/></div>
+      <div><label>Até</label><input type="date" id="r-to" value="${reportTo}"/></div>
+    </div>`:""}
+    <button class="btn bp" style="width:100%;margin-bottom:20px;" onclick="window.print()">
+      🖨 Gerar / Imprimir Relatório</button>
+  </div>
+
+  <!-- Cabeçalho imprimível -->
+  <div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--teal);">
+    <div class="serif" style="font-size:20px;color:var(--navy);">Viver Saúde · Hospital Rio Grande</div>
+    <div style="font-size:13px;color:var(--gray);margin-top:4px;">Relatório ${lbl} de Governança Clínica</div>
+    <div style="font-size:12px;color:var(--gray);margin-top:2px;">
+      ${fmt(from.toISOString().split("T")[0])} a ${fmt(to.toISOString().split("T")[0])} · Gerado em ${fmt(tod())}</div>
+  </div>
+
+  <div class="grid2" style="margin-bottom:20px;">
+    ${kpi("Internações no período", total,       "var(--teal)")}
+    ${kpi("Altas no período",        totalAltas,  "var(--green)")}
+    ${kpi("Média pacientes/dia",     mediaDia,    "var(--navy)")}
+    ${kpi("Média permanência",       mediaPerm+"d","var(--navy)")}
+    ${kpi("Passaram pela UTI",       pp.filter(p=>p.setor==="UTI").length, "var(--red)")}
+    ${kpi("Com pendências",          pp.filter(p=>p.pendencia).length,     "var(--amber)")}
+    ${kpi("Exames alto custo",       pp.filter(p=>p.exameAlto).length,     "#9a3412")}
+    ${kpi("Medicações alto custo",   pp.filter(p=>p.medicacaoAlto).length, "#9a3412")}
+    ${kpi("Proc. cirúrgicos",        pp.filter(p=>p.procedimentoCirurgico).length, "var(--navy)")}
+    ${kpi("Proc. invasivos",         pp.filter(p=>p.procedimentoInvasivo).length,  "var(--navy)")}
+  </div>
+
+  ${espTop.length>0?`
+  <div class="card" style="padding:16px;margin-bottom:12px;">
+    <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;">Distribuição por Especialidade</div>
+    ${espTop.map(([e,c])=>`
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;">
+          <span style="color:var(--navy);font-weight:500;">${esc(e)}</span>
+          <span style="color:var(--gray);">${c} pac. (${total?Math.round(c/total*100):0}%)</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${total?(c/total)*100:0}%;"></div></div>
+      </div>`).join("")}
+  </div>`:""}
+
+  ${Object.keys(cirC).length>0?`
+  <div class="card" style="padding:16px;margin-bottom:12px;">
+    <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:10px;">Tipos de Cirurgia</div>
+    ${Object.entries(cirC).map(([t,c])=>`
+      <div style="display:flex;justify-content:space-between;padding:6px 0;
+        border-bottom:1px solid var(--border);font-size:13px;">
+        <span style="color:var(--navy);">${esc(t)}</span>
+        <span class="badge b-ac">${c}</span>
+      </div>`).join("")}
+  </div>`:""}
+
+  <div class="card" style="padding:16px;overflow-x:auto;margin-bottom:12px;">
+    <div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:10px;">
+      Pacientes no Período (${total})</div>
+    ${total===0?`<div style="color:var(--gray);font-size:13px;text-align:center;padding:24px;">Nenhum paciente neste período.</div>`:`
+    <table style="width:100%;border-collapse:collapse;font-size:11px;">
+      <thead><tr style="background:var(--surface);">
+        ${["Prontuário","Nome","Setor","Internamento","Alta","Dias","Diagnóstico","Pend.","AC"].map(h=>
+          `<th style="padding:6px 8px;text-align:left;color:var(--gray);font-weight:700;
+            border-bottom:1.5px solid var(--border);white-space:nowrap;">${h}</th>`).join("")}
+      </tr></thead>
+      <tbody>
+        ${pp.map(p=>`
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:6px 8px;color:var(--gray);">${esc(p.prontuario)}</td>
+          <td style="padding:6px 8px;font-weight:500;white-space:nowrap;">${esc(p.nome)}</td>
+          <td style="padding:6px 8px;">${p.dataAlta
+            ?`<span class="badge b-alta">Alta</span>`
+            :`<span class="badge ${p.setor==="UTI"?"b-uti":"b-enf"}">${esc(p.setor)}</span>`}</td>
+          <td style="padding:6px 8px;white-space:nowrap;">${fmt(p.dataInternamento)}</td>
+          <td style="padding:6px 8px;white-space:nowrap;">${fmt(p.dataAlta)}</td>
+          <td style="padding:6px 8px;">${p.dataAlta?diffDays(p.dataInternamento,p.dataAlta):diffDays(p.dataInternamento)}d</td>
+          <td style="padding:6px 8px;">${esc(p.diagnosticoPrincipal)}</td>
+          <td style="padding:6px 8px;">${p.pendencia
+            ?`<span class="badge b-pend">⚠</span>`
+            :`<span class="badge b-ok">✓</span>`}</td>
+          <td style="padding:6px 8px;">${(p.exameAlto||p.medicacaoAlto)
+            ?`<span class="badge b-ac">AC</span>`:"—"}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>`}
+  </div>
+  <div style="font-size:11px;color:var(--gray);text-align:center;margin-top:8px;">
+    Viver Saúde · Hospital Rio Grande · ${fmt(tod())}</div>`;
+}
+
+function kpi(label, value, color) {
+  return `<div class="card kpi"><div class="val" style="color:${color};">${value}</div>
+    <div class="lbl">${label}</div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EVENT BINDING
+// ═══════════════════════════════════════════════════════════════
+function bindAll() {
+  // Header tabs
+  document.querySelectorAll("[data-tab]").forEach(b=>{
+    b.onclick = () => setState({tab:b.dataset.tab, editing:null});
+  });
+  const refresh = document.getElementById("btn-refresh");
+  if (refresh) refresh.onclick = loadData;
+  const logout = document.getElementById("btn-logout");
+  if (logout) logout.onclick = () => { if(pollTimer)clearInterval(pollTimer); setState({session:null,active:[],discharged:[]}); };
+
+  // Retry
+  const retry = document.getElementById("btn-retry");
+  if (retry) retry.onclick = loadData;
+
+  // Sub tabs
+  document.querySelectorAll("[data-subtab]").forEach(b=>{
+    b.onclick = () => setState({subTab:b.dataset.subtab});
+  });
+
+  // Filters
+  const fs = document.getElementById("fsearch");
+  if (fs) fs.oninput = e => setState({filterSearch:e.target.value});
+  const fset = document.getElementById("fsetor");
+  if (fset) fset.onchange = e => setState({filterSetor:e.target.value});
+  const fp = document.getElementById("fpend");
+  if (fp) fp.onclick = () => setState({filterPend:!STATE.filterPend});
+  const ds = document.getElementById("dsearch");
+  if (ds) ds.oninput = e => setState({dSearch:e.target.value});
+
+  // Card toggles
+  document.querySelectorAll("[data-toggle]").forEach(el=>{
+    el.onclick = () => {
+      const id = el.dataset.toggle;
+      const s = new Set(STATE.openCards);
+      s.has(id) ? s.delete(id) : s.add(id);
+      setState({openCards:s});
+    };
+  });
+
+  // Edit / Delete / Discharge buttons
+  document.querySelectorAll("[data-edit]").forEach(b=>{
+    b.onclick = e => { e.stopPropagation();
+      const p=STATE.active.find(x=>x.id===b.dataset.edit);
+      if(p) setState({editing:{...p, especialidades:[...(p.especialidades||[])]}, tab:"novo"}); };
+  });
+  document.querySelectorAll("[data-delete]").forEach(b=>{
+    b.onclick = e => { e.stopPropagation();
+      if(confirm("Remover este paciente do censo?")) {
+        fsDel("pacientes_ativos",b.dataset.delete).then(()=>{showToast("✓ Removido");loadData();}).catch(e=>alert(e.message));
+      }};
+  });
+  document.querySelectorAll("[data-discharge]").forEach(b=>{
+    b.onclick = e => { e.stopPropagation();
+      const p=STATE.active.find(x=>x.id===b.dataset.discharge);
+      if(p) setState({discharging:p}); };
+  });
+
+  // Alta modal
+  const ac = document.getElementById("alta-cancel");
+  if (ac) ac.onclick = () => setState({discharging:null});
+  const acf = document.getElementById("alta-confirm");
+  if (acf) acf.onclick = async () => {
+    if (STATE.saving) return;
+    const date = document.getElementById("alta-date").value;
+    setState({saving:true});
+    try {
+      const p = STATE.discharging;
+      const data = {...p, dataAlta:date}; delete data.id;
+      await fsAdd("pacientes_alta", data);
+      await fsDel("pacientes_ativos", p.id);
+      showToast("✓ Alta registrada");
+      setState({saving:false, discharging:null});
+      loadData();
+    } catch(e) { alert(e.message); setState({saving:false}); }
+  };
+
+  // Form
+  bindForm();
+
+  // Report
+  document.querySelectorAll("[data-rmode]").forEach(b=>{
+    b.onclick = () => setState({reportMode:b.dataset.rmode});
+  });
+  const rf = document.getElementById("r-from");
+  if (rf) rf.onchange = e => setState({reportFrom:e.target.value});
+  const rt = document.getElementById("r-to");
+  if (rt) rt.onchange = e => setState({reportTo:e.target.value});
+}
+
+function bindForm() {
+  const cancel = document.getElementById("f-cancel");
+  if (cancel) cancel.onclick = () => setState({tab:"censo", editing:null});
+
+  // Esp tags
+  document.querySelectorAll("[data-esp]").forEach(b=>{
+    b.onclick = () => {
+      const e = b.dataset.esp;
+      const cur = STATE.editing?.especialidades || STATE._formEsps || [];
+      const next = cur.includes(e) ? cur.filter(x=>x!==e) : [...cur,e];
+      if (STATE.editing) setState({editing:{...STATE.editing, especialidades:next}});
+      else { STATE._formEsps = next; render(); }
+      // Update button styles
+      document.querySelectorAll("[data-esp]").forEach(bt=>{
+        const sel = next.includes(bt.dataset.esp);
+        bt.style.background = sel?"var(--teal)":"white";
+        bt.style.color       = sel?"white":"var(--gray)";
+        bt.style.borderColor = sel?"var(--teal)":"var(--border)";
+      });
+    };
+  });
+
+  // Show/hide tipo cirurgia
+  const cir = document.getElementById("f-cir");
+  if (cir) cir.onchange = () => {
+    const row = document.getElementById("f-tipo-row");
+    if (row) row.style.display = cir.checked?"":"none";
+  };
+
+  // Save
+  const save = document.getElementById("f-save");
+  if (save) save.onclick = async () => {
+    if (STATE.saving) return;
+    const nome   = document.getElementById("f-nome").value.trim();
+    const pron   = document.getElementById("f-pron").value.trim();
+    const idade  = document.getElementById("f-idade").value.trim();
+    const diag   = document.getElementById("f-diag").value.trim();
+    if (!nome||!pron||!idade||!diag) { alert("Preencha: Nome, Prontuário, Idade e Diagnóstico principal."); return; }
+
+    const form = {
+      nome, prontuario:pron, idade:Number(idade),
+      sexo:   document.getElementById("f-sexo").value,
+      dataInternamento: document.getElementById("f-din").value,
+      dataAltaPrevista: document.getElementById("f-dap").value,
+      dataAlta: null,
+      setor:  document.getElementById("f-setor").value,
+      especialidades: STATE.editing?.especialidades || STATE._formEsps || [],
+      diagnosticoPrincipal: diag,
+      diagnosticosSecundarios: document.getElementById("f-diag2").value,
+      pendencia:  document.getElementById("f-pend").value,
+      exameAlto:  document.getElementById("f-exame").checked,
+      medicacaoAlto: document.getElementById("f-med").checked,
+      procedimentoInvasivo: document.getElementById("f-inv").checked,
+      procedimentoCirurgico: document.getElementById("f-cir").checked,
+      tipoCirurgia: document.getElementById("f-tipo")?.value||"",
+      observacoes: document.getElementById("f-obs").value,
+    };
+
+    setState({saving:true});
+    try {
+      if (STATE.editing) {
+        await fsUpdate("pacientes_ativos", STATE.editing.id, form);
+        showToast("✓ Paciente atualizado");
+      } else {
+        await fsAdd("pacientes_ativos", form);
+        showToast("✓ Internação registrada");
+      }
+      STATE._formEsps = [];
+      setState({saving:false, editing:null, tab:"censo", subTab:"internados"});
+      loadData();
+    } catch(e) { alert("Erro: "+e.message); setState({saving:false}); }
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+render();
+</script>
+</body>
+</html>
