@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>Viver Saúde · HRG</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',Arial,sans-serif;background:#f0f4f8;min-height:100vh;}
+:root{--navy:#0d2137;--teal:#0a7fa8;--teal-light:#e3f4f9;--red:#c0392b;
+  --amber:#d97706;--amber-light:#fef3c7;--green:#15803d;--green-light:#dcfce7;
+  --gray:#64748b;--border:#cbd5e1;--surface:#f8fafc;}
+input,select,textarea{font-family:'DM Sans',Arial,sans-serif;font-size:14px;
+  border:2px solid var(--border);border-radius:8px;padding:9px 11px;
+  width:100%;background:white;color:var(--navy);outline:none;transition:border-color .2s;}
+input:focus,select:focus,textarea:focus{border-color:var(--teal);}
+label{font-size:11px;font-weight:600;color:var(--gray);text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:4px;display:block;}
+button{font-family:'DM Sans',Arial,sans-serif;cursor:pointer;border:none;
+  border-radius:8px;font-weight:600;-webkit-tap-highlight-color:transparent;}
+.btn{display:inline-flex;align-items:center;justify-content:center;
+  gap:6px;padding:10px 18px;font-size:13px;}
+.bp{background:var(--teal);color:white;}
+.bs{background:var(--green);color:white;}
+.bd{background:var(--red);color:white;}
+.bg{background:transparent;color:var(--gray);border:2px solid var(--border);}
+.sm{padding:6px 12px;font-size:12px;}
+.card{background:white;border-radius:14px;box-shadow:0 1px 4px rgba(13,33,55,.08);overflow:hidden;}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;}
+.b-uti{background:#fdecea;color:#c0392b;}.b-enf{background:#e3f4f9;color:#0a7fa8;}
+.b-pend{background:#fef3c7;color:#92400e;}.b-ok{background:#dcfce7;color:#15803d;}
+.b-alta{background:#dcfce7;color:#15803d;}.b-ac{background:#fde8d8;color:#9a3412;}
+.chip{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);
+  color:var(--navy);font-weight:500;white-space:nowrap;background:var(--surface);}
+.hidden{display:none!important;}
+.serif{font-family:'DM Serif Display',serif;}
+.sec-title{font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;
+  letter-spacing:1px;padding-bottom:6px;border-bottom:2px solid var(--teal-light);margin-bottom:10px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+#header{background:linear-gradient(135deg,#0d2137 0%,#0a4060 100%);
+  padding:16px 16px 12px;position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 12px rgba(13,33,55,.2);}
+.stat-bub{text-align:center;padding:4px 10px;border-radius:8px;}
+.tab-btn{padding:6px 14px;border-radius:999px;font-size:12px;white-space:nowrap;}
+.subtab{padding:7px 16px;border-radius:8px;border:2px solid;font-size:12px;}
+.esp-tag{padding:5px 12px;border-radius:999px;border:2px solid;font-size:12px;}
+.check-lbl{display:flex;align-items:center;gap:8px;border:2px solid var(--border);
+  border-radius:8px;padding:9px 10px;cursor:pointer;}
+.pcard{margin-bottom:10px;cursor:pointer;}
+.dr-row{display:flex;gap:8px;margin-bottom:5px;}
+.dr-lbl{font-size:11px;color:var(--gray);min-width:130px;font-weight:600;flex-shrink:0;}
+.dr-val{font-size:12px;color:var(--navy);}
+.kpi-card{padding:14px 16px;}
+.kpi-val{font-size:26px;font-weight:700;font-family:'DM Serif Display',serif;}
+.kpi-lbl{font-size:11px;color:var(--gray);margin-top:2px;font-weight:500;}
+.minikpi{padding:12px 14px;}
+.bar-bg{height:6px;background:var(--border);border-radius:99px;margin-top:3px;}
+.bar-fill{height:6px;background:var(--teal);border-radius:99px;}
+.empty{text-align:center;padding:48px 0;color:var(--gray);}
+.spin{animation:spin 1s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.modal-bg{position:fixed;inset:0;background:rgba(13,33,55,.55);z-index:999;
+  display:flex;align-items:center;justify-content:center;padding:24px;}
+#toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;
+  background:var(--green);color:white;padding:8px 20px;border-radius:999px;
+  font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.2);white-space:nowrap;}
+@media print{#header,.np{display:none!important;}body{background:white;}
+  .card{box-shadow:none;border:1px solid #ddd;}#content{padding:0;}}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast" class="hidden"></div>
+
+<!-- MODAL ALTA -->
+<div id="modal-alta" class="modal-bg hidden">
+  <div class="card" style="width:100%;max-width:360px;padding:28px;">
+    <div class="serif" style="font-size:18px;color:var(--navy);margin-bottom:4px;">Confirmar Alta</div>
+    <div id="modal-alta-nome" style="font-size:13px;color:var(--gray);margin-bottom:20px;"></div>
+    <div><label>Data da alta</label><input type="date" id="modal-alta-data"/></div>
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button class="btn bg" style="flex:1;" id="modal-alta-cancel">Cancelar</button>
+      <button class="btn bs" style="flex:2;" id="modal-alta-confirm">✓ Confirmar Alta</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="tela-login" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0d2137 0%,#0a4060 60%,#0a7fa8 100%);padding:24px;">
+  <div style="width:100%;max-width:360px;">
+    <div style="text-align:center;margin-bottom:36px;">
+      <div style="font-size:48px;">🏥</div>
+      <div class="serif" style="font-size:26px;color:white;margin-top:8px;">Viver Saúde</div>
+      <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:4px;">Governança Clínica · Hospital Rio Grande</div>
+    </div>
+    <div class="card" style="padding:28px;">
+      <div style="margin-bottom:16px;"><label>Usuário</label>
+        <input id="campo-usuario" type="text" placeholder="seu.usuario" autocomplete="username"/></div>
+      <div style="margin-bottom:20px;"><label>Senha</label>
+        <input id="campo-senha" type="password" placeholder="sua senha" autocomplete="current-password"/></div>
+      <div id="erro-login" class="hidden" style="color:var(--red);font-size:13px;margin-bottom:12px;">⚠ Credenciais inválidas.</div>
+      <button id="botao-entrar" class="btn bp" style="width:100%;font-size:15px;padding:12px;">Entrar</button>
+      <div style="margin-top:16px;font-size:11px;color:var(--gray);text-align:center;">
+        moderadora/viver2026 · equipe1/hosp123 · equipe2/hosp456</div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="tela-app" class="hidden">
+  <!-- HEADER -->
+  <div id="header">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div class="serif" style="font-size:17px;color:white;">Viver Saúde · HRG</div>
+        <div id="header-sub" style="font-size:11px;color:rgba(255,255,255,.55);margin-top:1px;"></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <div class="stat-bub" style="background:rgba(255,255,255,.1);">
+          <div id="stat-ati" style="font-size:17px;font-weight:700;color:white;">0</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.6);">ATI</div></div>
+        <div class="stat-bub" style="background:rgba(192,57,43,.3);">
+          <div id="stat-uti" style="font-size:17px;font-weight:700;color:#ff7b72;">0</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.6);">UTI</div></div>
+        <div class="stat-bub" style="background:rgba(217,119,6,.3);" id="stat-pen-bub">
+          <div id="stat-pen" style="font-size:17px;font-weight:700;color:#fbbf24;">0</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.6);">PEN</div></div>
+        <div class="stat-bub" style="background:rgba(21,128,61,.25);">
+          <div id="stat-alt" style="font-size:17px;font-weight:700;color:#86efac;">0</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.6);">ALTAS</div></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;" id="tabs-container"></div>
+  </div>
+
+  <!-- CONTEÚDO -->
+  <div id="content" style="padding:16px 16px 80px;"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// FIREBASE
+// ══════════════════════════════════════════
+var PID = "viver-saude---hrg";
+var KEY = "AIzaSyDRQt4PiG94l7xPFbNfkeL-FXUIytz6IO4";
+var BASE = "https://firestore.googleapis.com/v1/projects/"+PID+"/databases/(default)/documents";
+
+function toFS(obj) {
+  var f={};
+  Object.keys(obj).forEach(function(k){
+    var v=obj[k];
+    if(v===null||v===undefined) f[k]={nullValue:null};
+    else if(typeof v==="boolean") f[k]={booleanValue:v};
+    else if(typeof v==="number") f[k]={integerValue:String(v)};
+    else if(Array.isArray(v)) f[k]={arrayValue:{values:v.map(function(i){return{stringValue:String(i)};})}};
+    else f[k]={stringValue:String(v)};
+  });
+  return {fields:f};
+}
+function fromFS(doc) {
+  var obj={id:doc.name.split("/").pop()};
+  Object.keys(doc.fields||{}).forEach(function(k){
+    var v=doc.fields[k];
+    if(v.stringValue!==undefined) obj[k]=v.stringValue;
+    else if(v.booleanValue!==undefined) obj[k]=v.booleanValue;
+    else if(v.integerValue!==undefined) obj[k]=Number(v.integerValue);
+    else if(v.nullValue!==undefined) obj[k]=null;
+    else if(v.arrayValue!==undefined) obj[k]=(v.arrayValue.values||[]).map(function(i){return i.stringValue||"";});
+    else obj[k]=null;
+  });
+  return obj;
+}
+function fsGet(col,cb) {
+  fetch(BASE+"/"+col+"?key="+KEY)
+    .then(function(r){return r.json();})
+    .then(function(d){cb(null,(d.documents||[]).map(fromFS));})
+    .catch(function(e){cb(e.message);});
+}
+function fsAdd(col,data,cb) {
+  fetch(BASE+"/"+col+"?key="+KEY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(toFS(data))})
+    .then(function(r){return r.json();})
+    .then(function(d){if(d.error)cb(d.error.message);else cb(null,fromFS(d));})
+    .catch(function(e){cb(e.message);});
+}
+function fsUpdate(col,id,data,cb) {
+  var fs=toFS(data);
+  var mask=Object.keys(fs.fields).map(function(k){return"updateMask.fieldPaths="+encodeURIComponent(k);}).join("&");
+  fetch(BASE+"/"+col+"/"+id+"?key="+KEY+"&"+mask,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(fs)})
+    .then(function(r){return r.json();})
+    .then(function(d){if(d.error)cb(d.error.message);else cb(null,fromFS(d));})
+    .catch(function(e){cb(e.message);});
+}
+function fsDel(col,id,cb) {
+  fetch(BASE+"/"+col+"/"+id+"?key="+KEY,{method:"DELETE"})
+    .then(function(){cb(null);})
+    .catch(function(e){cb(e.message);});
+}
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+var S = {
+  session:null, active:[], discharged:[],
+  tab:"censo", subTab:"internados",
+  editing:null, discharging:null,
+  filterSetor:"Todos", filterPend:false, filterSearch:"",
+  dSearch:"", rMode:"mensal", rFrom:tod(), rTo:tod(),
+  openCards:{}, formEsps:[]
+};
+
+// ══════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════
+function tod(){return new Date().toISOString().split("T")[0];}
+function fmt(d){return d?new Date(d+"T12:00:00").toLocaleDateString("pt-BR"):"—";}
+function diffDays(a,b){return Math.max(0,Math.floor((new Date((b||tod())+"T12:00:00")-new Date(a+"T12:00:00"))/86400000));}
+function monthOf(d){var p=d.split("-");return p[1]+"/"+p[0];}
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function toast(msg){var t=document.getElementById("toast");t.textContent=msg;t.classList.remove("hidden");setTimeout(function(){t.classList.add("hidden");},2500);}
+function el(id){return document.getElementById(id);}
+function val(id){return el(id)?el(id).value:"";}
+function chk(id){return el(id)?el(id).checked:false;}
+
+var ESPS=["Cardiologia","Clínica Médica","Neurologia","Ortopedia","Obstetrícia","Urologia","Ginecologia","Oncologia","Nefrologia","Pneumologia","Gastroenterologia","Infectologia","Pediatria","Cirurgia Geral","Cirurgia Vascular","Outro"];
+var TIPOS=["Ortopédico","Urológico","Obstétrico","Cardíaco","Neurológico","Geral","Ginecológico","Vascular","Torácico","Outro"];
+var USERS=[{user:"moderadora",pass:"viver2026",role:"moderadora",nome:"Dra. Admin"},{user:"equipe1",pass:"hosp123",role:"equipe",nome:"Equipe HRG"},{user:"equipe2",pass:"hosp456",role:"equipe",nome:"Equipe HRG 2"}];
+
+// ══════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════
+var pollTimer=null;
+function loadData() {
+  updateHeaderSub("sincronizando...");
+  fsGet("pacientes_ativos",function(err,data){
+    if(err){showErro(err);return;}
+    S.active=data;
+    fsGet("pacientes_alta",function(err2,data2){
+      if(err2){showErro(err2);return;}
+      S.discharged=data2;
+      updateStats();
+      if(S.tab==="censo") renderCenso();
+      updateHeaderSub("● ao vivo");
+    });
+  });
+}
+function startPolling(){if(pollTimer)clearInterval(pollTimer);pollTimer=setInterval(loadData,30000);}
+
+// ══════════════════════════════════════════
+// HEADER / STATS
+// ══════════════════════════════════════════
+function updateStats(){
+  var uti=S.active.filter(function(p){return p.setor==="UTI";}).length;
+  var pen=S.active.filter(function(p){return p.pendencia;}).length;
+  el("stat-ati").textContent=S.active.length;
+  el("stat-uti").textContent=uti;
+  el("stat-pen").textContent=pen;
+  el("stat-alt").textContent=S.discharged.length;
+  el("stat-pen-bub").style.display=pen>0?"":"none";
+}
+function updateHeaderSub(txt){
+  if(el("header-sub"))el("header-sub").textContent=(S.session?S.session.nome+" · "+(S.session.role==="moderadora"?"Moderadora":"Equipe")+" · ":"")+txt;
+}
+function renderTabs(){
+  var isMod=S.session&&S.session.role==="moderadora";
+  var tabs=[{k:"censo",l:"📋 Censo"}];
+  if(isMod)tabs.push({k:"novo",l:"+ Internação"});
+  tabs.push({k:"relatorio",l:"📊 Relatórios"});
+  var html=tabs.map(function(t){
+    var active=S.tab===t.k;
+    return '<button class="tab-btn" onclick="setTab(\''+t.k+'\')" style="background:'+(active?"white":"rgba(255,255,255,.12)")+';color:'+(active?"var(--navy)":"rgba(255,255,255,.75)")+';border:none;">'+t.l+'</button>';
+  }).join("");
+  html+='<button onclick="loadData()" style="padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:none;font-size:14px;margin-left:4px;">↻</button>';
+  html+='<button onclick="logout()" style="padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;font-size:11px;">Sair</button>';
+  el("tabs-container").innerHTML=html;
+}
+function setTab(t){S.tab=t;S.editing=null;renderTabs();renderContent();}
+function logout(){
+  if(pollTimer)clearInterval(pollTimer);
+  S.session=null;
+  el("tela-app").classList.add("hidden");
+  el("campo-usuario").value="";
+  el("campo-senha").value="";
+  el("erro-login").classList.add("hidden");
+  el("tela-login").classList.remove("hidden");
+}
+
+// ══════════════════════════════════════════
+// CONTENT ROUTER
+// ══════════════════════════════════════════
+function renderContent(){
+  if(S.tab==="novo"||S.editing) renderForm();
+  else if(S.tab==="relatorio") renderRelatorio();
+  else renderCenso();
+}
+
+// ══════════════════════════════════════════
+// CENSO
+// ══════════════════════════════════════════
+function renderCenso(){
+  var isMod=S.session&&S.session.role==="moderadora";
+  var fa=S.active.filter(function(p){
+    if(S.filterSetor!=="Todos"&&p.setor!==S.filterSetor)return false;
+    if(S.filterPend&&!p.pendencia)return false;
+    if(S.filterSearch){var q=S.filterSearch.toLowerCase();
+      return(p.nome||"").toLowerCase().indexOf(q)>=0||(p.prontuario||"").toLowerCase().indexOf(q)>=0||(p.diagnosticoPrincipal||"").toLowerCase().indexOf(q)>=0;}
+    return true;
+  });
+  var fd=S.discharged.filter(function(p){
+    if(!S.dSearch)return true;var q=S.dSearch.toLowerCase();
+    return(p.nome||"").toLowerCase().indexOf(q)>=0||(p.prontuario||"").toLowerCase().indexOf(q)>=0;
+  });
+  var avgPerm=S.discharged.length?(S.discharged.reduce(function(a,p){return a+diffDays(p.dataInternamento,p.dataAlta);},0)/S.discharged.length).toFixed(1)+"d":"—";
+  var thisMon=S.discharged.filter(function(p){return p.dataAlta&&monthOf(p.dataAlta)===monthOf(tod());}).length;
+
+  var html='<div style="display:flex;gap:8px;margin-bottom:14px;">';
+  ["internados","concluidos"].forEach(function(k){
+    var lbl=k==="internados"?"🏥 Internados ("+S.active.length+")":"✅ Concluídos ("+S.discharged.length+")";
+    var active=S.subTab===k;
+    html+='<button class="subtab" onclick="setSubTab(\''+k+'\')" style="background:'+(active?"var(--navy)":"white")+';color:'+(active?"white":"var(--gray)")+';border-color:'+(active?"var(--navy)":"var(--border)")+';">'+lbl+'</button>';
+  });
+  html+='</div>';
+
+  if(S.subTab==="internados"){
+    html+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">';
+    html+='<input type="text" id="fsearch" placeholder="🔍 Nome, prontuário, diagnóstico..." value="'+esc(S.filterSearch)+'" oninput="S.filterSearch=this.value;renderCenso();" style="flex:2;min-width:160px;"/>';
+    html+='<select id="fsetor" onchange="S.filterSetor=this.value;renderCenso();" style="flex:1;min-width:90px;"><option'+(S.filterSetor==="Todos"?" selected":"")+'>Todos</option><option'+(S.filterSetor==="UTI"?" selected":"")+'>UTI</option><option'+(S.filterSetor==="Enfermaria"?" selected":"")+'>Enfermaria</option></select>';
+    html+='<button onclick="S.filterPend=!S.filterPend;renderCenso();" style="padding:9px 12px;border-radius:8px;border:2px solid;font-size:12px;background:'+(S.filterPend?"var(--amber-light)":"white")+';color:'+(S.filterPend?"var(--amber)":"var(--gray)")+';border-color:'+(S.filterPend?"var(--amber)":"var(--border)")+';">⚠ Pendentes</button>';
+    html+='</div>';
+    if(fa.length===0) html+='<div class="empty"><div style="font-size:32px;">🏥</div><div style="margin-top:8px;font-size:13px;">Nenhum paciente internado.</div></div>';
+    else fa.forEach(function(p){html+=renderCard(p,false,isMod);});
+  } else {
+    html+='<div style="margin-bottom:12px;"><input type="text" id="dsearch" placeholder="🔍 Buscar..." value="'+esc(S.dSearch)+'" oninput="S.dSearch=this.value;renderCenso();"/></div>';
+    html+='<div class="grid3" style="margin-bottom:16px;">';
+    html+='<div class="card minikpi"><div style="font-size:20px;font-family:\'DM Serif Display\',serif;color:var(--teal);font-weight:700;">'+S.discharged.length+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;font-weight:500;">Total altas</div></div>';
+    html+='<div class="card minikpi"><div style="font-size:20px;font-family:\'DM Serif Display\',serif;color:var(--teal);font-weight:700;">'+avgPerm+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;font-weight:500;">Média perm.</div></div>';
+    html+='<div class="card minikpi"><div style="font-size:20px;font-family:\'DM Serif Display\',serif;color:var(--teal);font-weight:700;">'+thisMon+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;font-weight:500;">Este mês</div></div>';
+    html+='</div>';
+    if(fd.length===0) html+='<div class="empty"><div style="font-size:32px;">✅</div><div style="margin-top:8px;font-size:13px;">Nenhum atendimento concluído.</div></div>';
+    else fd.forEach(function(p){html+=renderCard(p,true,false);});
+  }
+  el("content").innerHTML=html;
+}
+function setSubTab(t){S.subTab=t;renderCenso();}
+
+function renderCard(p,discharged,isMod){
+  var dias=discharged?diffDays(p.dataInternamento,p.dataAlta):diffDays(p.dataInternamento);
+  var open=S.openCards[p.id];
+  var border=discharged?"var(--green)":p.setor==="UTI"?"var(--red)":"var(--teal)";
+  var html='<div class="card pcard" style="border-left:4px solid '+border+';">';
+  html+='<div style="padding:12px 14px;" onclick="toggleCard(\''+p.id+'\')">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">';
+  html+='<div style="flex:1;"><div style="font-weight:600;font-size:14px;color:var(--navy);">'+esc(p.nome)+'</div>';
+  html+='<div style="font-size:12px;color:var(--gray);margin-top:2px;">'+esc(p.prontuario)+' · '+esc(p.idade)+'a · '+esc(p.sexo)+'</div></div>';
+  html+='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">';
+  if(discharged) html+='<span class="badge b-alta">✓ Alta '+fmt(p.dataAlta)+'</span>';
+  else html+='<span class="badge '+(p.setor==="UTI"?"b-uti":"b-enf")+'">'+esc(p.setor)+'</span>';
+  if(p.pendencia&&!discharged) html+='<span class="badge b-pend">⚠ Pendência</span>';
+  html+='</div></div>';
+  html+='<div style="margin-top:6px;font-size:12px;color:var(--navy);font-weight:500;">'+esc(p.diagnosticoPrincipal)+'</div>';
+  html+='<div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;">';
+  html+='<span class="chip">📅 '+dias+'d</span>';
+  if(!discharged&&p.dataAltaPrevista) html+='<span class="chip">🏠 Prev: '+fmt(p.dataAltaPrevista)+'</span>';
+  if(discharged) html+='<span class="chip" style="background:var(--green-light);">✓ Alta: '+fmt(p.dataAlta)+'</span>';
+  if(p.exameAlto) html+='<span class="chip" style="background:var(--amber-light);">🔬 Exame AC</span>';
+  if(p.medicacaoAlto) html+='<span class="chip" style="background:var(--amber-light);">💊 Med AC</span>';
+  if(p.procedimentoCirurgico) html+='<span class="chip" style="background:#fde8d8;">🔪 '+esc(p.tipoCirurgia||"Cirurgia")+'</span>';
+  html+='</div></div>';
+
+  if(open){
+    html+='<div style="border-top:1px solid var(--border);padding:12px 14px;background:var(--surface);">';
+    html+=dr("Especialidade(s)",(p.especialidades||[]).join(", ")||"—");
+    html+=dr("Internamento",fmt(p.dataInternamento));
+    if(discharged) html+=dr("Data alta",fmt(p.dataAlta));
+    html+=dr("Permanência",dias+" dia(s)");
+    if(p.diagnosticosSecundarios) html+=dr("Diag. secundários",p.diagnosticosSecundarios);
+    if(p.pendencia) html+='<div class="dr-row" style="background:var(--amber-light);padding:4px 8px;border-radius:6px;"><span class="dr-lbl">⚠ Pendência</span><span class="dr-val">'+esc(p.pendencia)+'</span></div>';
+    html+=dr("Exame alto custo",p.exameAlto?"✓ Sim":"Não");
+    html+=dr("Med. alto custo",p.medicacaoAlto?"✓ Sim":"Não");
+    html+=dr("Proc. invasivo",p.procedimentoInvasivo?"✓ Sim":"Não");
+    html+=dr("Proc. cirúrgico",p.procedimentoCirurgico?"✓ "+(p.tipoCirurgia||"Sim"):"Não");
+    if(p.observacoes) html+=dr("Observações",p.observacoes);
+    if(isMod&&!discharged){
+      html+='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
+      html+='<button class="btn bg sm" onclick="editarPaciente(\''+p.id+'\')">✏ Editar</button>';
+      html+='<button class="btn bs sm" onclick="iniciarAlta(\''+p.id+'\')">🏠 Dar Alta</button>';
+      html+='<button class="btn bd sm" onclick="deletarPaciente(\''+p.id+'\')">🗑 Remover</button>';
+      html+='</div>';
+    }
+    html+='</div>';
+  }
+  html+='</div>';
+  return html;
+}
+function dr(label,val){return'<div class="dr-row"><span class="dr-lbl">'+label+'</span><span class="dr-val">'+esc(val)+'</span></div>';}
+function toggleCard(id){S.openCards[id]=!S.openCards[id];renderCenso();}
+
+// ══════════════════════════════════════════
+// ALTA
+// ══════════════════════════════════════════
+function iniciarAlta(id){
+  var p=S.active.filter(function(x){return x.id===id;})[0];
+  if(!p)return;
+  S.discharging=p;
+  el("modal-alta-nome").textContent=p.nome;
+  el("modal-alta-data").value=tod();
+  el("modal-alta").classList.remove("hidden");
+}
+el("modal-alta-cancel").addEventListener("click",function(){
+  el("modal-alta").classList.add("hidden");S.discharging=null;
+});
+el("modal-alta-confirm").addEventListener("click",function(){
+  if(!S.discharging)return;
+  var date=el("modal-alta-data").value;
+  var p=S.discharging;
+  var data=Object.assign({},p,{dataAlta:date});
+  delete data.id;
+  fsAdd("pacientes_alta",data,function(err){
+    if(err){alert("Erro: "+err);return;}
+    fsDel("pacientes_ativos",p.id,function(err2){
+      if(err2){alert("Erro: "+err2);return;}
+      el("modal-alta").classList.add("hidden");
+      S.discharging=null;
+      toast("✓ Alta registrada");
+      loadData();
+    });
+  });
+});
+
+// ══════════════════════════════════════════
+// CRUD
+// ══════════════════════════════════════════
+function editarPaciente(id){
+  var p=S.active.filter(function(x){return x.id===id;})[0];
+  if(!p)return;
+  S.editing=Object.assign({},p,{especialidades:(p.especialidades||[]).slice()});
+  S.formEsps=S.editing.especialidades.slice();
+  S.tab="novo";
+  renderTabs();
+  renderContent();
+}
+function deletarPaciente(id){
+  if(!confirm("Remover este paciente do censo?"))return;
+  fsDel("pacientes_ativos",id,function(err){
+    if(err){alert("Erro: "+err);return;}
+    toast("✓ Removido");
+    loadData();
+  });
+}
+
+// ══════════════════════════════════════════
+// FORM
+// ══════════════════════════════════════════
+function renderForm(){
+  var p=S.editing||{};
+  var esps=S.formEsps||[];
+  var html='<div style="padding:0 0 40px;">';
+  html+='<div class="serif" style="font-size:20px;color:var(--navy);margin-bottom:20px;">'+(S.editing?"Editar Paciente":"Nova Internação")+'</div>';
+
+  html+='<div style="margin-bottom:20px;"><div class="sec-title">Identificação</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:10px;">';
+  html+='<div><label>Nome completo</label><input type="text" id="f-nome" value="'+esc(p.nome||"")+'" placeholder="Nome do paciente"/></div>';
+  html+='<div class="grid3">';
+  html+='<div><label>Prontuário</label><input type="text" id="f-pron" value="'+esc(p.prontuario||"")+'" placeholder="PRN-00000"/></div>';
+  html+='<div><label>Idade</label><input type="number" id="f-idade" value="'+esc(p.idade||"")+'"/></div>';
+  html+='<div><label>Sexo</label><select id="f-sexo"><option value="F"'+((!p.sexo||p.sexo==="F")?" selected":"")+'">F</option><option value="M"'+(p.sexo==="M"?" selected":"")+'">M</option></select></div>';
+  html+='</div></div></div>';
+
+  html+='<div style="margin-bottom:20px;"><div class="sec-title">Internamento</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:10px;">';
+  html+='<div class="grid2"><div><label>Data internamento</label><input type="date" id="f-din" value="'+esc(p.dataInternamento||tod())+'"/></div>';
+  html+='<div><label>Alta prevista</label><input type="date" id="f-dap" value="'+esc(p.dataAltaPrevista||"")+'"/></div></div>';
+  html+='<div><label>Setor</label><select id="f-setor"><option'+((!p.setor||p.setor==="Enfermaria")?" selected":"")+'">Enfermaria</option><option'+(p.setor==="UTI"?" selected":"")+'">UTI</option></select></div>';
+  html+='</div></div>';
+
+  html+='<div style="margin-bottom:20px;"><div class="sec-title">Especialidade(s)</div>';
+  html+='<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  ESPS.forEach(function(e){
+    var sel=esps.indexOf(e)>=0;
+    html+='<button class="esp-tag" onclick="toggleEsp(\''+esc(e)+'\')" id="esp-'+esc(e)+'" style="background:'+(sel?"var(--teal)":"white")+';color:'+(sel?"white":"var(--gray)")+';border-color:'+(sel?"var(--teal)":"var(--border)")+';">'+esc(e)+'</button>';
+  });
+  html+='</div></div>';
+
+  html+='<div style="margin-bottom:20px;"><div class="sec-title">Diagnósticos</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:10px;">';
+  html+='<div><label>Diagnóstico principal</label><input type="text" id="f-diag" value="'+esc(p.diagnosticoPrincipal||"")+'" placeholder="Ex: Insuficiência Cardíaca"/></div>';
+  html+='<div><label>Diagnósticos secundários</label><textarea id="f-diag2" rows="2" placeholder="Comorbidades...">'+esc(p.diagnosticosSecundarios||"")+'</textarea></div>';
+  html+='</div></div>';
+
+  html+='<div style="margin-bottom:20px;"><div class="sec-title">Pendências e Alertas</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:10px;">';
+  html+='<div><label>Pendência</label><input type="text" id="f-pend" value="'+esc(p.pendencia||"")+'" placeholder="Deixe em branco se não houver"/></div>';
+  html+='<div class="grid2">';
+  html+=checkRow("f-exame","🔬 Exame alto custo",p.exameAlto);
+  html+=checkRow("f-med","💊 Medicação alto custo",p.medicacaoAlto);
+  html+=checkRow("f-inv","🩺 Proc. invasivo",p.procedimentoInvasivo);
+  html+=checkRow("f-cir","🔪 Proc. cirúrgico",p.procedimentoCirurgico,"toggleTipoCir()");
+  html+='</div>';
+  html+='<div id="f-tipo-row" style="'+(p.procedimentoCirurgico?"":"display:none")+'"><label>Tipo de cirurgia</label>';
+  html+='<select id="f-tipo"><option value="">Selecione...</option>';
+  TIPOS.forEach(function(t){html+='<option'+(p.tipoCirurgia===t?" selected":"")+'">'+esc(t)+'</option>';});
+  html+='</select></div>';
+  html+='</div></div>';
+
+  html+='<div style="margin-bottom:20px;"><div class="sec-title">Observações</div>';
+  html+='<textarea id="f-obs" rows="3" placeholder="Notas clínicas, intercorrências...">'+esc(p.observacoes||"")+'</textarea></div>';
+
+  html+='<div style="display:flex;gap:10px;">';
+  html+='<button class="btn bg" style="flex:1;" onclick="cancelarForm()">Cancelar</button>';
+  html+='<button class="btn bp" style="flex:2;" onclick="salvarForm()">✓ Salvar</button>';
+  html+='</div></div>';
+  el("content").innerHTML=html;
+}
+
+function checkRow(id,label,checked,onchange){
+  return'<label class="check-lbl" for="'+id+'" style="background:'+(checked?"var(--amber-light)":"var(--surface)")+';border-color:'+(checked?"var(--amber)":"var(--border)")+';">'+
+    '<input type="checkbox" id="'+id+'"'+(checked?" checked":"")+(onchange?' onchange="'+onchange+'"':'')+' style="width:14px;accent-color:var(--amber);"/>'+
+    '<span style="font-size:12px;font-weight:500;color:var(--navy);">'+label+'</span></label>';
+}
+function toggleEsp(e){
+  var idx=S.formEsps.indexOf(e);
+  if(idx>=0)S.formEsps.splice(idx,1);else S.formEsps.push(e);
+  var btn=document.getElementById("esp-"+e);
+  if(btn){var sel=S.formEsps.indexOf(e)>=0;
+    btn.style.background=sel?"var(--teal)":"white";
+    btn.style.color=sel?"white":"var(--gray)";
+    btn.style.borderColor=sel?"var(--teal)":"var(--border)";}
+}
+function toggleTipoCir(){
+  var row=el("f-tipo-row");if(row)row.style.display=chk("f-cir")?"":"none";
+}
+function cancelarForm(){S.editing=null;S.formEsps=[];S.tab="censo";renderTabs();renderContent();}
+function salvarForm(){
+  var nome=val("f-nome").trim(),pron=val("f-pron").trim(),idade=val("f-idade").trim(),diag=val("f-diag").trim();
+  if(!nome||!pron||!idade||!diag){alert("Preencha: Nome, Prontuário, Idade e Diagnóstico principal.");return;}
+  var form={nome:nome,prontuario:pron,idade:Number(idade),sexo:val("f-sexo"),
+    dataInternamento:val("f-din"),dataAltaPrevista:val("f-dap"),dataAlta:null,
+    setor:val("f-setor"),especialidades:S.formEsps.slice(),
+    diagnosticoPrincipal:diag,diagnosticosSecundarios:val("f-diag2"),
+    pendencia:val("f-pend"),exameAlto:chk("f-exame"),medicacaoAlto:chk("f-med"),
+    procedimentoInvasivo:chk("f-inv"),procedimentoCirurgico:chk("f-cir"),
+    tipoCirurgia:val("f-tipo"),observacoes:val("f-obs")};
+  if(S.editing){
+    fsUpdate("pacientes_ativos",S.editing.id,form,function(err){
+      if(err){alert("Erro: "+err);return;}
+      toast("✓ Paciente atualizado");
+      S.editing=null;S.formEsps=[];S.tab="censo";
+      renderTabs();loadData();
+    });
+  } else {
+    fsAdd("pacientes_ativos",form,function(err){
+      if(err){alert("Erro: "+err);return;}
+      toast("✓ Internação registrada");
+      S.formEsps=[];S.tab="censo";
+      renderTabs();loadData();
+    });
+  }
+}
+
+// ══════════════════════════════════════════
+// RELATÓRIO
+// ══════════════════════════════════════════
+function renderRelatorio(){
+  var all=S.active.concat(S.discharged);
+  var from,to;
+  var n=new Date(),y=n.getFullYear(),m=n.getMonth();
+  if(S.rMode==="mensal"){from=new Date(y,m,1);to=new Date(y,m+1,0);}
+  else if(S.rMode==="trimestral"){from=new Date(y,m-2,1);to=new Date(y,m+1,0);}
+  else if(S.rMode==="semestral"){from=new Date(y,m-5,1);to=new Date(y,m+1,0);}
+  else if(S.rMode==="anual"){from=new Date(y,0,1);to=new Date(y,11,31);}
+  else{from=new Date(S.rFrom+"T00:00:00");to=new Date(S.rTo+"T23:59:59");}
+
+  var pp=all.filter(function(p){var d=new Date(p.dataInternamento+"T12:00:00");return d>=from&&d<=to;});
+  var pd=S.discharged.filter(function(p){var d=new Date(p.dataInternamento+"T12:00:00");return d>=from&&d<=to;});
+  var total=pp.length,totalAltas=pd.length;
+  var dias=Math.max(1,Math.ceil((to-from)/86400000));
+  var mediaDia=(total/dias).toFixed(1);
+  var mediaPerm=totalAltas?(pd.reduce(function(a,p){return a+diffDays(p.dataInternamento,p.dataAlta);},0)/totalAltas).toFixed(1):"—";
+  var espC={};pp.forEach(function(p){(p.especialidades||[]).forEach(function(e){espC[e]=(espC[e]||0)+1;});});
+  var espTop=Object.keys(espC).map(function(e){return[e,espC[e]];}).sort(function(a,b){return b[1]-a[1];});
+  var cirC={};pp.filter(function(p){return p.procedimentoCirurgico&&p.tipoCirurgia;}).forEach(function(p){cirC[p.tipoCirurgia]=(cirC[p.tipoCirurgia]||0)+1;});
+  var lbl={mensal:"Mensal",trimestral:"Trimestral",semestral:"Semestral",anual:"Anual",custom:"Personalizado"}[S.rMode];
+
+  var modos=["mensal","trimestral","semestral","anual","custom"];
+  var html='<div class="np">';
+  html+='<div class="serif" style="font-size:20px;color:var(--navy);margin-bottom:4px;">Relatórios</div>';
+  html+='<div style="font-size:12px;color:var(--gray);margin-bottom:14px;">Hospital Rio Grande · Viver Saúde</div>';
+  html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">';
+  modos.forEach(function(x){
+    var active=S.rMode===x;
+    html+='<button onclick="S.rMode=\''+x+'\';renderRelatorio();" style="padding:6px 14px;border-radius:999px;border:2px solid;font-size:12px;background:'+(active?"var(--navy)":"white")+';color:'+(active?"white":"var(--gray)")+';border-color:'+(active?"var(--navy)":"var(--border)")+';">'+(x==="custom"?"📅 Personalizado":x.charAt(0).toUpperCase()+x.slice(1))+'</button>';
+  });
+  html+='</div>';
+  if(S.rMode==="custom"){
+    html+='<div class="grid2" style="margin-bottom:12px;">';
+    html+='<div><label>De</label><input type="date" value="'+S.rFrom+'" onchange="S.rFrom=this.value;renderRelatorio();"/></div>';
+    html+='<div><label>Até</label><input type="date" value="'+S.rTo+'" onchange="S.rTo=this.value;renderRelatorio();"/></div>';
+    html+='</div>';
+  }
+  html+='<button class="btn bp" style="width:100%;margin-bottom:20px;" onclick="window.print()">🖨 Gerar / Imprimir Relatório</button>';
+  html+='</div>';
+
+  html+='<div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--teal);">';
+  html+='<div class="serif" style="font-size:20px;color:var(--navy);">Viver Saúde · Hospital Rio Grande</div>';
+  html+='<div style="font-size:13px;color:var(--gray);margin-top:4px;">Relatório '+lbl+' de Governança Clínica</div>';
+  html+='<div style="font-size:12px;color:var(--gray);margin-top:2px;">'+fmt(from.toISOString().split("T")[0])+' a '+fmt(to.toISOString().split("T")[0])+' · Gerado em '+fmt(tod())+'</div>';
+  html+='</div>';
+
+  var kpis=[["Internações no período",total,"var(--teal)"],["Altas no período",totalAltas,"var(--green)"],
+    ["Média pacientes/dia",mediaDia,"var(--navy)"],["Média permanência",mediaPerm+"d","var(--navy)"],
+    ["Passaram pela UTI",pp.filter(function(p){return p.setor==="UTI";}).length,"var(--red)"],
+    ["Com pendências",pp.filter(function(p){return p.pendencia;}).length,"var(--amber)"],
+    ["Exames alto custo",pp.filter(function(p){return p.exameAlto;}).length,"#9a3412"],
+    ["Medicações alto custo",pp.filter(function(p){return p.medicacaoAlto;}).length,"#9a3412"],
+    ["Proc. cirúrgicos",pp.filter(function(p){return p.procedimentoCirurgico;}).length,"var(--navy)"],
+    ["Proc. invasivos",pp.filter(function(p){return p.procedimentoInvasivo;}).length,"var(--navy)"]];
+  html+='<div class="grid2" style="margin-bottom:20px;">';
+  kpis.forEach(function(k){html+='<div class="card kpi-card"><div class="kpi-val" style="color:'+k[2]+';">'+k[1]+'</div><div class="kpi-lbl">'+k[0]+'</div></div>';});
+  html+='</div>';
+
+  if(espTop.length>0){
+    html+='<div class="card" style="padding:16px;margin-bottom:12px;"><div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;">Distribuição por Especialidade</div>';
+    espTop.forEach(function(e){
+      html+='<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span style="color:var(--navy);font-weight:500;">'+esc(e[0])+'</span><span style="color:var(--gray);">'+e[1]+' pac. ('+(total?Math.round(e[1]/total*100):0)+'%)</span></div>';
+      html+='<div class="bar-bg"><div class="bar-fill" style="width:'+(total?(e[1]/total)*100:0)+'%;"></div></div></div>';
+    });
+    html+='</div>';
+  }
+  if(Object.keys(cirC).length>0){
+    html+='<div class="card" style="padding:16px;margin-bottom:12px;"><div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:10px;">Tipos de Cirurgia</div>';
+    Object.keys(cirC).forEach(function(t){html+='<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="color:var(--navy);">'+esc(t)+'</span><span class="badge b-ac">'+cirC[t]+'</span></div>';});
+    html+='</div>';
+  }
+
+  html+='<div class="card" style="padding:16px;overflow-x:auto;margin-bottom:12px;">';
+  html+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:10px;">Pacientes no Período ('+total+')</div>';
+  if(total===0){html+='<div style="color:var(--gray);font-size:13px;text-align:center;padding:24px;">Nenhum paciente neste período.</div>';}
+  else{
+    html+='<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:var(--surface);">';
+    ["Prontuário","Nome","Setor","Internamento","Alta","Dias","Diagnóstico","Pend.","AC"].forEach(function(h){
+      html+='<th style="padding:6px 8px;text-align:left;color:var(--gray);font-weight:700;border-bottom:2px solid var(--border);white-space:nowrap;">'+h+'</th>';
+    });
+    html+='</tr></thead><tbody>';
+    pp.forEach(function(p){
+      html+='<tr style="border-bottom:1px solid var(--border);">';
+      html+='<td style="padding:6px 8px;color:var(--gray);">'+esc(p.prontuario)+'</td>';
+      html+='<td style="padding:6px 8px;font-weight:500;white-space:nowrap;">'+esc(p.nome)+'</td>';
+      html+='<td style="padding:6px 8px;">'+(p.dataAlta?'<span class="badge b-alta">Alta</span>':'<span class="badge '+(p.setor==="UTI"?"b-uti":"b-enf")+'">'+esc(p.setor)+'</span>')+'</td>';
+      html+='<td style="padding:6px 8px;white-space:nowrap;">'+fmt(p.dataInternamento)+'</td>';
+      html+='<td style="padding:6px 8px;white-space:nowrap;">'+fmt(p.dataAlta)+'</td>';
+      html+='<td style="padding:6px 8px;">'+(p.dataAlta?diffDays(p.dataInternamento,p.dataAlta):diffDays(p.dataInternamento))+'d</td>';
+      html+='<td style="padding:6px 8px;">'+esc(p.diagnosticoPrincipal)+'</td>';
+      html+='<td style="padding:6px 8px;">'+(p.pendencia?'<span class="badge b-pend">⚠</span>':'<span class="badge b-ok">✓</span>')+'</td>';
+      html+='<td style="padding:6px 8px;">'+((p.exameAlto||p.medicacaoAlto)?'<span class="badge b-ac">AC</span>':"—")+'</td>';
+      html+='</tr>';
+    });
+    html+='</tbody></table>';
+  }
+  html+='</div>';
+  html+='<div style="font-size:11px;color:var(--gray);text-align:center;">Viver Saúde · Hospital Rio Grande · '+fmt(tod())+'</div>';
+  el("content").innerHTML=html;
+}
+
+function showErro(msg){
+  el("content").innerHTML='<div style="margin:16px;padding:14px;background:#fdecea;border-radius:10px;color:var(--red);font-size:13px;">⚠ '+esc(msg)+'<button class="btn bd sm" onclick="loadData()" style="margin-left:8px;">Tentar novamente</button></div>';
+}
+
+// ══════════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════════
+function tentarLogin(){
+  var u=el("campo-usuario").value;
+  var p=el("campo-senha").value;
+  var f=USERS.filter(function(x){return x.user===u&&x.pass===p;})[0];
+  if(f){
+    S.session=f;
+    el("tela-login").classList.add("hidden");
+    el("tela-app").classList.remove("hidden");
+    updateHeaderSub("carregando...");
+    renderTabs();
+    loadData();
+    startPolling();
+  } else {
+    el("erro-login").classList.remove("hidden");
+  }
+}
+el("botao-entrar").addEventListener("click", tentarLogin);
+el("campo-senha").addEventListener("keydown",function(e){if(e.key==="Enter")tentarLogin();});
+</script>
+</body>
+</html>
