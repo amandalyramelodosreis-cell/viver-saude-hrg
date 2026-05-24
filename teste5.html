@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Viver Saúde · HRG</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,sans-serif;background:#f0f4f8;}
+input,select,textarea{font-size:15px;border:2px solid #cbd5e1;border-radius:8px;padding:10px;width:100%;background:white;color:#0d2137;outline:none;}
+input:focus,select:focus,textarea:focus{border-color:#0a7fa8;}
+label{font-size:12px;font-weight:bold;color:#64748b;text-transform:uppercase;margin-bottom:4px;display:block;}
+button{font-size:14px;font-weight:bold;cursor:pointer;border:none;border-radius:8px;padding:10px 18px;font-family:Arial,sans-serif;}
+.card{background:white;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.1);overflow:hidden;}
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<!-- TELA DE LOGIN -->
+<div id="tela-login" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0d2137,#0a7fa8);padding:24px;">
+  <div style="width:100%;max-width:360px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="font-size:48px;">🏥</div>
+      <div style="font-size:28px;color:white;font-weight:bold;margin-top:8px;">Viver Saúde</div>
+      <div style="color:rgba(255,255,255,.7);font-size:14px;margin-top:4px;">Governança Clínica · Hospital Rio Grande</div>
+    </div>
+    <div class="card" style="padding:28px;">
+      <div style="margin-bottom:16px;">
+        <label>Usuário</label>
+        <input id="campo-usuario" type="text" placeholder="seu.usuario"/>
+      </div>
+      <div style="margin-bottom:20px;">
+        <label>Senha</label>
+        <input id="campo-senha" type="password" placeholder="sua senha"/>
+      </div>
+      <div id="erro-login" class="hidden" style="color:#c0392b;font-size:13px;margin-bottom:12px;">⚠ Usuário ou senha incorretos.</div>
+      <button id="botao-entrar" style="width:100%;background:#0a7fa8;color:white;font-size:15px;padding:12px;">Entrar</button>
+      <div style="margin-top:14px;font-size:11px;color:#64748b;text-align:center;">moderadora/viver2026 · equipe1/hosp123</div>
+    </div>
+  </div>
+</div>
+
+<!-- APP PRINCIPAL (oculto até login) -->
+<div id="tela-app" class="hidden">
+  <p style="padding:40px;text-align:center;font-size:18px;">✅ Login realizado! App carregando...</p>
+</div>
+
+<script>
+document.getElementById("botao-entrar").addEventListener("click", function() {
+  var u = document.getElementById("campo-usuario").value;
+  var p = document.getElementById("campo-senha").value;
+  var usuarios = [
+    {user:"moderadora", pass:"viver2026"},
+    {user:"equipe1",    pass:"hosp123"},
+    {user:"equipe2",    pass:"hosp456"},
+  ];
+  var encontrado = usuarios.find(function(x){ return x.user===u && x.pass===p; });
+  if (encontrado) {
+    document.getElementById("tela-login").classList.add("hidden");
+    document.getElementById("tela-app").classList.remove("hidden");
+  } else {
+    document.getElementById("erro-login").classList.remove("hidden");
+  }
+});
+
+document.getElementById("campo-senha").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") document.getElementById("botao-entrar").click();
+});
+</script>
+</body>
+</html>
