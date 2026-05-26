@@ -250,7 +250,11 @@ function loadData(){
     });
   });
 }
-function startPolling(){if(pollTimer)clearInterval(pollTimer);pollTimer=setInterval(loadData,30000);}
+function startPolling(){if(pollTimer)clearInterval(pollTimer);pollTimer=setInterval(function(){
+  // Não atualiza se formulário estiver aberto
+  if(S.tab==="novo"||S.editing) return;
+  loadData();
+},30000);}
 
 function updateStats(){
   var uti=S.active.filter(function(p){return p.setor==="UTI";}).length;
