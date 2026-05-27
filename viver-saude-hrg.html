@@ -367,7 +367,7 @@ function renderCard(p,discharged,isMod){
   var dias=discharged?(p.diasTotal||diffDays(p.dataInternamento,p.dataAlta)):diffDays(p.dataInternamento);
   var open=S.openCards[p.id];
   var border=discharged?"var(--green)":p.setor==="UTI"?"var(--red)":"var(--teal)";
-  var temEv=p.eventoAdverso&&p.eventoAdverso!=="Não"&&p.eventoAdverso!=="";
+  var evVal=(p.eventoAdverso||"").trim().toLowerCase();var temEv=evVal&&evVal!=="nao"&&evVal!=="não"&&evVal!=="0"&&evVal!=="na";
   var html='<div class="card pcard" style="border-left:4px solid '+border+';">';
   html+='<div style="padding:12px 14px;" onclick="toggleCard(\''+p.id+'\')">';
   html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">';
@@ -707,7 +707,7 @@ function renderRelatorio(){
   var espC={};
   pp.forEach(function(p){(p.especialidades||[]).forEach(function(e){espC[e]=(espC[e]||0)+1;});});
   var espTop=Object.keys(espC).map(function(e){return[e,espC[e]];}).sort(function(a,b){return b[1]-a[1];});
-  var comEv=pp.filter(function(p){return p.eventoAdverso&&p.eventoAdverso!=="Nao"&&p.eventoAdverso!=="";});
+  var comEv=pp.filter(function(p){var ev=(p.eventoAdverso||"").trim().toLowerCase();return ev&&ev!=="nao"&&ev!=="não"&&ev!=="0"&&ev!=="na";});
   var comUTI=pp.filter(function(p){return(p.diasUTI||0)>0;});
   var comRess=pp.filter(function(p){return p.ressonancia;});
   var comProc=pp.filter(function(p){return p.procedimentoAlto;});
