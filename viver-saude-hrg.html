@@ -357,16 +357,7 @@ function renderCenso(){
     else fd.forEach(function(p){html+=renderCard(p,true,false);});
   }
   el("content").innerHTML=html;
-  // Event delegation for discharged action buttons
-  document.querySelectorAll("[data-restore]").forEach(function(btn){
-    btn.addEventListener("click",function(e){e.stopPropagation();restaurarPaciente(btn.getAttribute("data-restore"));});
-  });
-  document.querySelectorAll("[data-apagar]").forEach(function(btn){
-    btn.addEventListener("click",function(e){e.stopPropagation();apagarConcluido(btn.getAttribute("data-apagar"));});
-  });
-  document.querySelectorAll("[data-edit-conc]").forEach(function(btn){
-    btn.addEventListener("click",function(e){e.stopPropagation();editarConcluido(btn.getAttribute("data-edit-conc"));});
-  });
+  // buttons use inline onclick via window functions
 }
 function setSubTab(t){S.subTab=t;S.novoConcluido=false;S.editingConc=null;renderCenso();}
 
@@ -415,10 +406,10 @@ function renderCard(p,discharged,isMod){
     if(p.prescricao) html+=dr("Prescrição",p.prescricao);
     if(p.observacoes) html+=dr("Observações",p.observacoes);
     if(isMod&&discharged){
-      html+='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
-      html+='<button class="btn bg sm" data-edit-conc="'+esc(p.id)+'" style="font-size:11px;">&#x270F; Editar</button>';
-      html+='<button class="btn bs sm" data-restore="'+esc(p.id)+'" style="font-size:11px;">&#x21A9; Retornar ao censo</button>';
-      html+='<button class="btn bd sm" data-apagar="'+esc(p.id)+'" style="font-size:11px;">&#x1F5D1; Apagar</button>';
+      html+='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;" onclick="event.stopPropagation();">';
+      html+='<button class="btn bg sm" onclick="event.stopPropagation();editarConcluido(this.dataset.id)" data-id="'+p.id+'" style="font-size:11px;">&#x270F; Editar</button>';
+      html+='<button class="btn bs sm" onclick="event.stopPropagation();restaurarPaciente(this.dataset.id)" data-id="'+p.id+'" style="font-size:11px;">&#x21A9; Retornar</button>';
+      html+='<button class="btn bd sm" onclick="event.stopPropagation();apagarConcluido(this.dataset.id)" data-id="'+p.id+'" style="font-size:11px;">&#x1F5D1; Apagar</button>';
       html+='</div>';
     }
     if(isMod&&!discharged){
