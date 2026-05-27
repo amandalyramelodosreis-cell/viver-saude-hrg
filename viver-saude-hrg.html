@@ -354,7 +354,7 @@ function renderCenso(){
     html+='<div class="card minikpi"><div style="font-size:18px;font-family:\'DM Serif Display\',serif;color:var(--teal);font-weight:700;">'+thisMon+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;">Este mês</div></div>';
     html+='</div>';
     if(fd.length===0) html+='<div class="empty"><div style="font-size:32px;">✅</div><div style="margin-top:8px;font-size:13px;">Nenhum atendimento concluído.</div></div>';
-    else fd.forEach(function(p){html+=renderCard(p,true,false);});
+    else fd.forEach(function(p){html+=renderCard(p,true,isMod);});
   }
   el("content").innerHTML=html;
   // buttons use inline onclick via window functions
