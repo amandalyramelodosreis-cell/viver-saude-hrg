@@ -211,7 +211,7 @@ var S={
   tab:"censo",subTab:"internados",
   editing:null,discharging:null,
   filterSetor:"Todos",filterPend:false,filterSearch:"",
-  dSearch:"",rMes:null,rAno:null,rFrom:"",rTo:"",rMode:"mes",detalhe:null,
+  dSearch:"",rMes:null,rAno:null,rFrom:"",rTo:"",rMode:"mes",detalhe:null,editingConc:null,
   openCards:{},formEsps:[],novoConcluido:false
 };
 
@@ -308,7 +308,11 @@ function renderCenso(){
       return(p.nome||"").toLowerCase().indexOf(q)>=0||(p.prontuario||"").toLowerCase().indexOf(q)>=0||(p.diagnosticoPrincipal||"").toLowerCase().indexOf(q)>=0;}
     return true;
   });
-  var fd=S.discharged.filter(function(p){
+  // Sort discharged by alta date descending
+  var dischSorted=S.discharged.slice().sort(function(a,b){
+    return (b.dataAlta||"").localeCompare(a.dataAlta||"");
+  });
+  var fd=dischSorted.filter(function(p){
     if(!S.dSearch)return true;var q=S.dSearch.toLowerCase();
     return(p.nome||"").toLowerCase().indexOf(q)>=0||(p.prontuario||"").toLowerCase().indexOf(q)>=0;
   });
@@ -360,8 +364,11 @@ function renderCenso(){
   document.querySelectorAll("[data-apagar]").forEach(function(btn){
     btn.addEventListener("click",function(e){e.stopPropagation();apagarConcluido(btn.getAttribute("data-apagar"));});
   });
+  document.querySelectorAll("[data-edit-conc]").forEach(function(btn){
+    btn.addEventListener("click",function(e){e.stopPropagation();editarConcluido(btn.getAttribute("data-edit-conc"));});
+  });
 }
-function setSubTab(t){S.subTab=t;S.novoConcluido=false;renderCenso();}
+function setSubTab(t){S.subTab=t;S.novoConcluido=false;S.editingConc=null;renderCenso();}
 
 function renderCard(p,discharged,isMod){
   var dias=discharged?(p.diasTotal||diffDays(p.dataInternamento,p.dataAlta)):diffDays(p.dataInternamento);
@@ -409,8 +416,9 @@ function renderCard(p,discharged,isMod){
     if(p.observacoes) html+=dr("Observações",p.observacoes);
     if(isMod&&discharged){
       html+='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
-      html+='<button class="btn bg sm" data-restore="'+p.id+'" style="font-size:11px;">&#x21A9; Retornar ao censo</button>';
-      html+='<button class="btn bd sm" data-apagar="'+p.id+'" style="font-size:11px;">&#x1F5D1; Apagar</button>';
+      html+='<button class="btn bg sm" data-edit-conc="'+esc(p.id)+'" style="font-size:11px;">&#x270F; Editar</button>';
+      html+='<button class="btn bs sm" data-restore="'+esc(p.id)+'" style="font-size:11px;">&#x21A9; Retornar ao censo</button>';
+      html+='<button class="btn bd sm" data-apagar="'+esc(p.id)+'" style="font-size:11px;">&#x1F5D1; Apagar</button>';
       html+='</div>';
     }
     if(isMod&&!discharged){
@@ -582,31 +590,34 @@ function salvarForm(){
 // FORM CONCLUÍDO
 // ══════════════════════════════
 function renderFormConcluido(){
-  var html='<div class="card" style="padding:16px;margin-bottom:14px;border-left:4px solid var(--green);">';
-  html+='<div style="font-weight:700;font-size:13px;color:var(--green);margin-bottom:12px;">Cadastrar Atendimento Concluído</div>';
+  var p=S.editingConc||{};
+  var isEdit=!!S.editingConc;
+  var html='<div class="card" style="padding:16px;margin-bottom:14px;border-left:4px solid '+(isEdit?"var(--teal)":"var(--green)")+';padding:16px;">';
+  html+='<div style="font-weight:700;font-size:13px;color:'+(isEdit?"var(--teal)":"var(--green)")+';margin-bottom:12px;">'+(isEdit?"Editar Atendimento Concluído":"Cadastrar Atendimento Concluído")+'</div>';
+
   html+='<div style="display:flex;flex-direction:column;gap:10px;">';
-  html+='<div><label>Nome completo</label><input type="text" id="c-nome" placeholder="Nome do paciente"/></div>';
-  html+='<div class="grid3"><div><label>Prontuário</label><input type="text" id="c-pron" placeholder="PRN-00000"/></div>';
-  html+='<div><label>Idade</label><input type="number" id="c-idade"/></div>';
-  html+='<div><label>Sexo</label><select id="c-sexo"><option value="F">F</option><option value="M">M</option></select></div></div>';
-  html+='<div class="grid2"><div><label>Data internamento</label><input type="date" id="c-din"/></div>';
-  html+='<div><label>Data da alta</label><input type="date" id="c-dalta"/></div></div>';
+  html+='<div><label>Nome completo</label><input type="text" id="c-nome" value="'+esc(p.nome||"")+'" placeholder="Nome do paciente"/></div>';
+  html+='<div class="grid3"><div><label>Prontuário</label><input type="text" id="c-pron" value="'+esc(p.prontuario||"")+'" placeholder="PRN-00000"/></div>';
+  html+='<div><label>Idade</label><input type="number" id="c-idade" value="'+esc(p.idade||"")+'"/></div>';
+  html+='<div><label>Sexo</label><select id="c-sexo"><option value="F"'+((p.sexo||"F")==="F"?" selected":"")+'" >F</option><option value="M"'+( p.sexo==="M"?" selected":"")+'">M</option></select></div></div>';
+  html+='<div class="grid2"><div><label>Data internamento</label><input type="date" id="c-din" value="'+esc(p.dataInternamento||"")+'"/></div>';
+  html+='<div><label>Data da alta</label><input type="date" id="c-dalta" value="'+esc(p.dataAlta||"")+'"/></div></div>';
   html+='<div class="grid2"><div><label>Setor predominante</label><select id="c-setor"><option value="Unidade de Internação">Unidade de Internação</option><option value="UTI">UTI</option></select></div>';
-  html+='<div><label>Dias em UTI</label><input type="number" id="c-dias-uti" placeholder="0" min="0"/></div></div>';
-  html+='<div class="grid2"><div><label>Especialidades</label><input type="text" id="c-esps" placeholder="Ex: Cardiologia, CM"/></div>';
+  html+='<div><label>Dias em UTI</label><input type="number" id="c-dias-uti" value="'+esc(p.diasUTI||0)+'" placeholder="0" min="0"/></div></div>';
+  html+='<div class="grid2"><div><label>Especialidades</label><input type="text" id="c-esps" value="'+esc((p.especialidades||[]).join(", "))+'" placeholder="Ex: Cardiologia, CM"/></div>';
   html+='<div><label>Tipo internamento</label><select id="c-tipo-int"><option value="Urgência">Urgência</option><option value="Eletivo">Eletivo</option><option value="Não informado" selected>Não informado</option></select></div></div>';
-  html+='<div><label>Diagnóstico principal</label><input type="text" id="c-diag" placeholder="Ex: Insuficiência Cardíaca"/></div>';
+  html+='<div><label>Diagnóstico principal</label><input type="text" id="c-diag" value="'+esc(p.diagnosticoPrincipal||"")+'" placeholder="Ex: Insuficiência Cardíaca"/></div>';
   html+='<div><label>Resumo clínico</label><textarea id="c-resumo" rows="2" placeholder="Comorbidades, contexto clínico..."></textarea></div>';
-  html+='<div><label>Pendência (se houve)</label><input type="text" id="c-pend" placeholder="Deixe em branco se não houve"/></div>';
+  html+='<div><label>Pendência (se houve)</label><input type="text" id="c-pend" value="'+esc(p.pendencia||"")+'" placeholder="Deixe em branco se não houve"/></div>';
   html+='<div class="grid2">';
   html+=checkRow("c-ress","🧲 Ressonância",false);
   html+=checkRow("c-proc","⚡ Proc. alto custo",false);
   html+='</div>';
-  html+='<div><label>Evento adverso evitável</label><input type="text" id="c-ev" placeholder="Descreva ou deixe em branco"/></div>';
+  html+='<div><label>Evento adverso evitável</label><input type="text" id="c-ev" value="'+esc(p.eventoAdverso&&p.eventoAdverso!=="Não"?p.eventoAdverso:"")+'" placeholder="Descreva ou deixe em branco"/></div>';
   html+='<div><label>Prescrição médica</label><textarea id="c-presc" rows="2" placeholder="Medicações, doses..."></textarea></div>';
-  html+='<div><label>Proc. alto custo (descrição)</label><input type="text" id="c-proc-desc" placeholder="Ex: Tomografia..."/></div>';
+  html+='<div><label>Proc. alto custo (descrição)</label><input type="text" id="c-proc-desc" value="'+esc(p.procedimentoDescricao||"")+'" placeholder="Ex: Tomografia..."/></div>';
   html+='<div><label>Observações</label><textarea id="c-obs" rows="2" placeholder="Notas..."></textarea></div>';
-  html+='<button class="btn bs" style="width:100%;" onclick="salvarConcluido()">✓ Salvar Atendimento Concluído</button>';
+  html+='<button class="btn '+(isEdit?'bp':'bs')+'" style="width:100%;" onclick="salvarConcluido()">✓ '+(isEdit?'Salvar Alterações':'Salvar Atendimento Concluído')+'</button>';
   html+='</div></div>';
   return html;
 }
@@ -627,11 +638,19 @@ function salvarConcluido(){
     resumoClinico:val("c-resumo"),pendencia:val("c-pend"),
     ressonancia:chk("c-ress"),procedimentoAlto:chk("c-proc"),
     eventoAdverso:ev,prescricao:val("c-presc"),procedimentoDescricao:val("c-proc-desc"),observacoes:val("c-obs")};
-  fsAdd("pacientes_alta",data,function(err){
-    if(err){alert("Erro: "+err);return;}
-    toast("✓ Atendimento concluído cadastrado");
-    S.novoConcluido=false;loadData();
-  });
+  if(S.editingConc){
+    fsUpdate("pacientes_alta",S.editingConc.id,data,function(err){
+      if(err){alert("Erro: "+err);return;}
+      toast("✓ Atendimento atualizado");
+      S.novoConcluido=false;S.editingConc=null;loadData();
+    });
+  } else {
+    fsAdd("pacientes_alta",data,function(err){
+      if(err){alert("Erro: "+err);return;}
+      toast("✓ Atendimento concluído cadastrado");
+      S.novoConcluido=false;S.editingConc=null;loadData();
+    });
+  }
 }
 
 // ══════════════════════════════
@@ -855,6 +874,15 @@ function showErro(msg){
 // ══════════════════════════════
 // RESTAURAR / APAGAR CONCLUÍDO
 // ══════════════════════════════
+function editarConcluido(id){
+  var p=S.discharged.filter(function(x){return x.id===id;})[0];
+  if(!p)return;
+  S.editingConc=Object.assign({},p,{especialidades:(p.especialidades||[]).slice()});
+  S.formEsps=S.editingConc.especialidades.slice();
+  S.subTab="concluidos";
+  S.novoConcluido=true;
+  renderCenso();
+}
 function restaurarPaciente(id){
   if(!confirm("Retornar ao censo de internados?"))return;
   var p=S.discharged.filter(function(x){return x.id===id;})[0];
