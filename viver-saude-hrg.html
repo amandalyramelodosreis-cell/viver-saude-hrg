@@ -211,7 +211,7 @@ var S={
   tab:"censo",subTab:"internados",
   editing:null,discharging:null,
   filterSetor:"Todos",filterPend:false,filterSearch:"",
-  dSearch:"",rMes:null,rAno:null,
+  dSearch:"",rMes:null,rAno:null,rFrom:"",rTo:"",rMode:"mes",detalhe:null,
   openCards:{},formEsps:[],novoConcluido:false
 };
 
@@ -353,6 +353,13 @@ function renderCenso(){
     else fd.forEach(function(p){html+=renderCard(p,true,false);});
   }
   el("content").innerHTML=html;
+  // Event delegation for discharged action buttons
+  document.querySelectorAll("[data-restore]").forEach(function(btn){
+    btn.addEventListener("click",function(e){e.stopPropagation();restaurarPaciente(btn.getAttribute("data-restore"));});
+  });
+  document.querySelectorAll("[data-apagar]").forEach(function(btn){
+    btn.addEventListener("click",function(e){e.stopPropagation();apagarConcluido(btn.getAttribute("data-apagar"));});
+  });
 }
 function setSubTab(t){S.subTab=t;S.novoConcluido=false;renderCenso();}
 
@@ -398,7 +405,14 @@ function renderCard(p,discharged,isMod){
     html+=dr("Ressonância",p.ressonancia?"✓ Sim":"Não");
     html+=dr("Proc. alto custo",p.procedimentoAlto?"✓ Sim":"Não");
     html+=dr("Evento adverso",p.eventoAdverso||"Não");
+    if(p.prescricao) html+=dr("Prescrição",p.prescricao);
     if(p.observacoes) html+=dr("Observações",p.observacoes);
+    if(isMod&&discharged){
+      html+='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
+      html+='<button class="btn bg sm" data-restore="'+p.id+'" style="font-size:11px;">&#x21A9; Retornar ao censo</button>';
+      html+='<button class="btn bd sm" data-apagar="'+p.id+'" style="font-size:11px;">&#x1F5D1; Apagar</button>';
+      html+='</div>';
+    }
     if(isMod&&!discharged){
       html+='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
       html+='<button class="btn bg sm" onclick="editarPaciente(\''+p.id+'\')">✏ Editar</button>';
@@ -509,9 +523,12 @@ function renderForm(){
   html+=checkRow("f-ress","🧲 Ressonância",p.ressonancia);
   html+=checkRow("f-proc","⚡ Proc. alto custo",p.procedimentoAlto);
   html+='</div>';
+  html+='<div><label>Procedimento alto custo (descrição)</label><input type="text" id="f-proc-desc" value="'+esc(p.procedimentoDescricao||'')+'" placeholder="Ex: Tomografia, AngioTC..."/></div>';
   html+='<div><label>Evento adverso evitável</label><input type="text" id="f-ev" value="'+esc(p.eventoAdverso||"")+'" placeholder="Descreva ou deixe em branco"/></div>';
   html+='</div></div>';
 
+  html+='<div style="margin-bottom:20px;"><div class="sec-title">Prescrição Médica</div>';
+  html+='<textarea id="f-presc" rows="3" placeholder="Medicações, doses, via...">'+esc(p.prescricao||"")+'</textarea></div>';
   html+='<div style="margin-bottom:20px;"><div class="sec-title">Observações</div>';
   html+='<textarea id="f-obs" rows="3" placeholder="Notas clínicas, intercorrências...">'+esc(p.observacoes||"")+'</textarea></div>';
 
@@ -546,7 +563,7 @@ function salvarForm(){
     especialidades:S.formEsps.slice(),
     diagnosticoPrincipal:diag,resumoClinico:val("f-resumo"),
     pendencia:val("f-pend"),ressonancia:chk("f-ress"),procedimentoAlto:chk("f-proc"),
-    eventoAdverso:val("f-ev").trim()||"Não",observacoes:val("f-obs"),
+    eventoAdverso:val("f-ev").trim()||"Não",prescricao:val("f-presc"),procedimentoDescricao:val("f-proc-desc"),observacoes:val("f-obs"),
     diasUTI:0,diasTotal:0};
   if(S.editing){
     fsUpdate("pacientes_ativos",S.editing.id,form,function(err){
@@ -586,6 +603,8 @@ function renderFormConcluido(){
   html+=checkRow("c-proc","⚡ Proc. alto custo",false);
   html+='</div>';
   html+='<div><label>Evento adverso evitável</label><input type="text" id="c-ev" placeholder="Descreva ou deixe em branco"/></div>';
+  html+='<div><label>Prescrição médica</label><textarea id="c-presc" rows="2" placeholder="Medicações, doses..."></textarea></div>';
+  html+='<div><label>Proc. alto custo (descrição)</label><input type="text" id="c-proc-desc" placeholder="Ex: Tomografia..."/></div>';
   html+='<div><label>Observações</label><textarea id="c-obs" rows="2" placeholder="Notas..."></textarea></div>';
   html+='<button class="btn bs" style="width:100%;" onclick="salvarConcluido()">✓ Salvar Atendimento Concluído</button>';
   html+='</div></div>';
@@ -607,7 +626,7 @@ function salvarConcluido(){
     especialidades:esps,diagnosticoPrincipal:diag,
     resumoClinico:val("c-resumo"),pendencia:val("c-pend"),
     ressonancia:chk("c-ress"),procedimentoAlto:chk("c-proc"),
-    eventoAdverso:ev,observacoes:val("c-obs")};
+    eventoAdverso:ev,prescricao:val("c-presc"),procedimentoDescricao:val("c-proc-desc"),observacoes:val("c-obs")};
   fsAdd("pacientes_alta",data,function(err){
     if(err){alert("Erro: "+err);return;}
     toast("✓ Atendimento concluído cadastrado");
@@ -618,35 +637,50 @@ function salvarConcluido(){
 // ══════════════════════════════
 // RELATÓRIO
 // ══════════════════════════════
+function toggleDetalhe(k){S.detalhe=(S.detalhe===k?null:k);renderRelatorio();}
+function setRMode(m){S.rMode=m;S.detalhe=null;renderRelatorio();}
+
 function renderRelatorio(){
   var now=new Date();
   if(S.rMes===null){S.rMes=now.getMonth();S.rAno=now.getFullYear();}
-  var mes=S.rMes,ano=S.rAno;
-
-  // Pacientes que tiveram internamento OU alta no mês selecionado
   var all=S.active.concat(S.discharged);
-  var pp=all.filter(function(p){
-    if(!p.dataInternamento)return false;
-    var din=new Date(p.dataInternamento+"T12:00:00");
-    var dalt=p.dataAlta?new Date(p.dataAlta+"T12:00:00"):null;
-    var inicioMes=new Date(ano,mes,1);
-    var fimMes=new Date(ano,mes+1,0,23,59,59);
-    // Conta se estava internado em algum momento do mês
-    var altaOuHoje=dalt||new Date();
-    return din<=fimMes&&altaOuHoje>=inicioMes;
-  });
+  var pp,pd,inicioMes,fimMes,tituloRel;
 
-  // Pacientes com alta no mês
-  var pd=S.discharged.filter(function(p){
-    if(!p.dataAlta)return false;
-    var d=new Date(p.dataAlta+"T12:00:00");
-    return d.getMonth()===mes&&d.getFullYear()===ano;
-  });
+  if(S.rMode==="custom"&&S.rFrom&&S.rTo){
+    var cf=new Date(S.rFrom+"T00:00:00"),ct=new Date(S.rTo+"T23:59:59");
+    pp=all.filter(function(p){
+      if(!p.dataInternamento)return false;
+      var din=new Date(p.dataInternamento+"T12:00:00");
+      var dalt=p.dataAlta?new Date(p.dataAlta+"T12:00:00"):new Date();
+      return din<=ct&&dalt>=cf;
+    });
+    pd=S.discharged.filter(function(p){
+      if(!p.dataAlta)return false;
+      var d=new Date(p.dataAlta+"T12:00:00");
+      return d>=cf&&d<=ct;
+    });
+    inicioMes=cf;fimMes=ct;
+    tituloRel=fmt(S.rFrom)+" a "+fmt(S.rTo);
+  } else {
+    var mes=S.rMes,ano=S.rAno;
+    inicioMes=new Date(ano,mes,1);fimMes=new Date(ano,mes+1,0,23,59,59);
+    pp=all.filter(function(p){
+      if(!p.dataInternamento)return false;
+      var din=new Date(p.dataInternamento+"T12:00:00");
+      var dalt=p.dataAlta?new Date(p.dataAlta+"T12:00:00"):new Date();
+      return din<=fimMes&&dalt>=inicioMes;
+    });
+    pd=S.discharged.filter(function(p){
+      if(!p.dataAlta)return false;
+      var d=new Date(p.dataAlta+"T12:00:00");
+      return d.getMonth()===mes&&d.getFullYear()===ano;
+    });
+    tituloRel=MESES[S.rMes]+" "+S.rAno;
+  }
 
-  // Diárias no mês
-  var inicioMes=new Date(ano,mes,1);
-  var fimMes=new Date(ano,mes+1,0);
-  var totalDiariasMes=0, totalDiasUTIMes=0;
+  pp=pp.slice().sort(function(a,b){return(a.dataInternamento||"").localeCompare(b.dataInternamento||"");});
+
+  var totalDiariasMes=0,totalDiasUTIMes=0;
   S.discharged.forEach(function(p){
     if(!p.dataInternamento||!p.dataAlta)return;
     var din=new Date(p.dataInternamento+"T12:00:00");
@@ -656,65 +690,115 @@ function renderRelatorio(){
     var fim=dalt>fimMes?fimMes:dalt;
     var dias=Math.max(0,Math.floor((fim-inicio)/86400000));
     totalDiariasMes+=dias;
-    if((p.diasUTI||0)>0){
-      var propUTI=(p.diasUTI||0)/(p.diasTotal||1);
-      totalDiasUTIMes+=Math.round(dias*propUTI);
-    }
+    if((p.diasUTI||0)>0){totalDiasUTIMes+=Math.round(dias*((p.diasUTI||0)/(p.diasTotal||1)));}
   });
-  // Pacientes ativos também geram diárias no mês
   S.active.forEach(function(p){
     if(!p.dataInternamento)return;
     var din=new Date(p.dataInternamento+"T12:00:00");
     if(din>fimMes)return;
     var inicio=din<inicioMes?inicioMes:din;
-    var fim=fimMes;
-    var dias=Math.max(0,Math.floor((fim-inicio)/86400000));
+    var dias=Math.max(0,Math.floor((fimMes-inicio)/86400000));
     totalDiariasMes+=dias;
-    if(p.setor==="UTI") totalDiasUTIMes+=dias;
+    if(p.setor==="UTI")totalDiasUTIMes+=dias;
   });
 
-  var pctUTI=totalDiariasMes>0?((totalDiasUTIMes/totalDiariasMes)*100).toFixed(1)+"%":"—";
+  var pctUTI=totalDiariasMes>0?((totalDiasUTIMes/totalDiariasMes)*100).toFixed(1)+"%":"---";
   var total=pp.length,totalAltas=pd.length;
-  var espC={};pp.forEach(function(p){(p.especialidades||[]).forEach(function(e){espC[e]=(espC[e]||0)+1;});});
+  var espC={};
+  pp.forEach(function(p){(p.especialidades||[]).forEach(function(e){espC[e]=(espC[e]||0)+1;});});
   var espTop=Object.keys(espC).map(function(e){return[e,espC[e]];}).sort(function(a,b){return b[1]-a[1];});
-  var evs=pp.filter(function(p){return p.eventoAdverso&&p.eventoAdverso!=="Não"&&p.eventoAdverso!=="";}).length;
+  var comEv=pp.filter(function(p){return p.eventoAdverso&&p.eventoAdverso!=="Nao"&&p.eventoAdverso!=="";});
+  var comUTI=pp.filter(function(p){return(p.diasUTI||0)>0;});
+  var comRess=pp.filter(function(p){return p.ressonancia;});
+  var comProc=pp.filter(function(p){return p.procedimentoAlto;});
 
   var html='<div class="np">';
-  html+='<div class="serif" style="font-size:20px;color:var(--navy);margin-bottom:4px;">Relatórios</div>';
-  html+='<div style="font-size:12px;color:var(--gray);margin-bottom:14px;">Hospital Rio Grande · Viver Saúde</div>';
+  html+='<div class="serif" style="font-size:20px;color:var(--navy);margin-bottom:4px;">Relatorios</div>';
+  html+='<div style="font-size:12px;color:var(--gray);margin-bottom:14px;">Hospital Rio Grande - Viver Saude</div>';
 
-  // Navegação mês
-  html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">';
-  html+='<button onclick="navMes(-1)" style="padding:8px 14px;border-radius:8px;border:2px solid var(--border);background:white;font-size:16px;cursor:pointer;">‹</button>';
-  html+='<div style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--navy);">'+MESES[mes]+' '+ano+'</div>';
-  html+='<button onclick="navMes(1)" style="padding:8px 14px;border-radius:8px;border:2px solid var(--border);background:white;font-size:16px;cursor:pointer;">›</button>';
-  html+='</div>';
-  html+='<button class="btn bp" style="width:100%;margin-bottom:20px;" onclick="window.print()">🖨 Gerar / Imprimir Relatório</button>';
+  var m1=S.rMode!=="custom",m2=S.rMode==="custom";
+  html+='<div style="display:flex;gap:8px;margin-bottom:12px;">';
+  html+='<button onclick="setRMode(\'mes\')" style="padding:6px 14px;border-radius:999px;border:2px solid;font-size:12px;background:'+(m1?"var(--navy)":"white")+';color:'+(m1?"white":"var(--gray)")+';border-color:'+(m1?"var(--navy)":"var(--border)")+';">Por mes</button>';
+  html+='<button onclick="setRMode(\'custom\')" style="padding:6px 14px;border-radius:999px;border:2px solid;font-size:12px;background:'+(m2?"var(--navy)":"white")+';color:'+(m2?"white":"var(--gray)")+';border-color:'+(m2?"var(--navy)":"var(--border)")+';"> Periodo personalizado</button>';
   html+='</div>';
 
-  // Cabeçalho imprimível
+  if(!m2){
+    html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">';
+    html+='<button onclick="navMes(-1)" style="padding:8px 14px;border-radius:8px;border:2px solid var(--border);background:white;font-size:16px;cursor:pointer;">&#8249;</button>';
+    html+='<div style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--navy);">'+MESES[S.rMes]+' '+S.rAno+'</div>';
+    html+='<button onclick="navMes(1)" style="padding:8px 14px;border-radius:8px;border:2px solid var(--border);background:white;font-size:16px;cursor:pointer;">&#8250;</button>';
+    html+='</div>';
+  } else {
+    html+='<div class="grid2" style="margin-bottom:12px;">';
+    html+='<div><label>De</label><input type="date" value="'+esc(S.rFrom)+'" onchange="S.rFrom=this.value;S.detalhe=null;renderRelatorio();"/></div>';
+    html+='<div><label>Ate</label><input type="date" value="'+esc(S.rTo)+'" onchange="S.rTo=this.value;S.detalhe=null;renderRelatorio();"/></div>';
+    html+='</div>';
+  }
+  html+='<button class="btn bp" style="width:100%;margin-bottom:20px;" onclick="window.print()">Gerar Relatorio</button>';
+  html+='</div>';
+
   html+='<div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--teal);">';
-  html+='<div class="serif" style="font-size:20px;color:var(--navy);">Viver Saúde · Hospital Rio Grande</div>';
-  html+='<div style="font-size:13px;color:var(--gray);margin-top:4px;">Relatório Mensal de Governança Clínica</div>';
-  html+='<div style="font-size:12px;color:var(--gray);margin-top:2px;">'+MESES[mes]+' '+ano+' · Gerado em '+fmt(tod())+'</div>';
+  html+='<div class="serif" style="font-size:20px;color:var(--navy);">Viver Saude - Hospital Rio Grande</div>';
+  html+='<div style="font-size:13px;color:var(--gray);margin-top:4px;">Relatorio de Governanca Clinica</div>';
+  html+='<div style="font-size:12px;color:var(--gray);margin-top:2px;">'+tituloRel+' - Gerado em '+fmt(tod())+'</div>';
   html+='</div>';
 
-  var kpis=[
-    ["Internações no mês",total,"var(--teal)"],
-    ["Altas no mês",totalAltas,"var(--green)"],
-    ["Diárias totais no mês",totalDiariasMes,"var(--navy)"],
-    ["Diárias UTI no mês",totalDiasUTIMes,"var(--red)"],
-    ["% diárias UTI",pctUTI,"var(--red)"],
-    ["Eventos adversos",evs,"var(--amber)"],
-    ["Com ressonância",pp.filter(function(p){return p.ressonancia;}).length,"#9a3412"],
-    ["Proc. alto custo",pp.filter(function(p){return p.procedimentoAlto;}).length,"#9a3412"],
-  ];
-  html+='<div class="grid2" style="margin-bottom:20px;">';
-  kpis.forEach(function(k){html+='<div class="card kpi-card"><div class="kpi-val" style="color:'+k[2]+';">'+k[1]+'</div><div class="kpi-lbl">'+k[0]+'</div></div>';});
+  function mkKpi(label,value,color,key){
+    var active=S.detalhe===key;
+    var h='<div class="card kpi-card" onclick="toggleDetalhe(\''+key+'\')" style="cursor:pointer;border:2px solid '+(active?"var(--teal)":"transparent")+';">';
+    h+='<div class="kpi-val" style="color:'+color+';">'+value+'</div>';
+    h+='<div class="kpi-lbl">'+label+'</div>';
+    h+=active?'<div style="font-size:10px;color:var(--teal);margin-top:3px;">fechar</div>':'<div style="font-size:10px;color:var(--gray);margin-top:3px;">detalhar</div>';
+    h+='</div>';
+    return h;
+  }
+
+  html+='<div class="grid2" style="margin-bottom:12px;">';
+  html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--teal);">'+total+'</div><div class="kpi-lbl">Internacoes no periodo</div></div>';
+  html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--green);">'+totalAltas+'</div><div class="kpi-lbl">Altas no periodo</div></div>';
+  html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--navy);">'+totalDiariasMes+'</div><div class="kpi-lbl">Diarias totais</div></div>';
+  html+=mkKpi("Diarias UTI",totalDiasUTIMes,"var(--red)","uti");
+  html+=mkKpi("% diarias UTI",pctUTI,"var(--red)","pctuti");
+  html+=mkKpi("Eventos adversos",comEv.length,"var(--amber)","ev");
+  html+=mkKpi("Com ressonancia",comRess.length,"#9a3412","ress");
+  html+=mkKpi("Proc. alto custo",comProc.length,"#9a3412","proc");
   html+='</div>';
+
+  function detalheBox(titulo,itens){
+    var h='<div class="card" style="padding:16px;margin-bottom:12px;border-left:4px solid var(--teal);">';
+    h+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:10px;">'+titulo+'</div>';
+    if(!itens.length) h+='<div style="color:var(--gray);font-size:13px;">Nenhum registro neste periodo.</div>';
+    itens.forEach(function(i){h+=i;});
+    h+='</div>';
+    return h;
+  }
+  function dRow2(nome,det){
+    return'<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;display:flex;justify-content:space-between;gap:8px;"><span style="font-weight:600;color:var(--navy);">'+esc(nome)+'</span><span style="color:var(--gray);text-align:right;flex-shrink:0;">'+esc(det)+'</span></div>';
+  }
+
+  if(S.detalhe==="uti"||S.detalhe==="pctuti"){
+    html+=detalheBox("Pacientes com Diarias de UTI ("+comUTI.length+")",
+      comUTI.map(function(p){return dRow2(p.nome,(p.diasUTI||0)+"d UTI / "+(p.diasTotal||0)+"d total ("+(p.diasTotal>0?((p.diasUTI||0)/p.diasTotal*100).toFixed(0):0)+"%)");}));
+  }
+  if(S.detalhe==="ev"){
+    html+=detalheBox("Eventos Adversos Evitaveis ("+comEv.length+")",
+      comEv.map(function(p){
+        return'<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><div style="font-weight:600;color:var(--navy);">'+esc(p.nome)+'</div><div style="color:var(--red);margin-top:2px;">'+esc(p.eventoAdverso)+'</div></div>';
+      }));
+  }
+  if(S.detalhe==="ress"){
+    html+=detalheBox("Pacientes com Ressonancia ("+comRess.length+")",
+      comRess.map(function(p){return dRow2(p.nome,p.prontuario);}));
+  }
+  if(S.detalhe==="proc"){
+    html+=detalheBox("Procedimentos de Alto Custo ("+comProc.length+")",
+      comProc.map(function(p){
+        return'<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><div style="font-weight:600;color:var(--navy);">'+esc(p.nome)+'</div><div style="color:var(--gray);margin-top:2px;">'+esc(p.procedimentoDescricao||"Sem descricao")+'</div></div>';
+      }));
+  }
 
   if(espTop.length>0){
-    html+='<div class="card" style="padding:16px;margin-bottom:12px;"><div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;">Distribuição por Especialidade</div>';
+    html+='<div class="card" style="padding:16px;margin-bottom:12px;"><div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;">Distribuicao por Especialidade</div>';
     espTop.forEach(function(e){
       html+='<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span style="color:var(--navy);font-weight:500;">'+esc(e[0])+'</span><span style="color:var(--gray);">'+e[1]+' pac. ('+(total?Math.round(e[1]/total*100):0)+'%)</span></div>';
       html+='<div class="bar-bg"><div class="bar-fill" style="width:'+(total?(e[1]/total)*100:0)+'%;"></div></div></div>';
@@ -722,62 +806,75 @@ function renderRelatorio(){
     html+='</div>';
   }
 
-  // Eventos adversos
-  var comEv=pp.filter(function(p){return p.eventoAdverso&&p.eventoAdverso!=="Não"&&p.eventoAdverso!=="";});
-  if(comEv.length>0){
-    html+='<div class="card" style="padding:16px;margin-bottom:12px;border-left:4px solid var(--red);">';
-    html+='<div style="font-weight:700;font-size:13px;color:var(--red);margin-bottom:10px;">⚠ Eventos Adversos Evitáveis</div>';
-    comEv.forEach(function(p){
-      html+='<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">';
-      html+='<span style="font-weight:600;color:var(--navy);">'+esc(p.nome)+'</span>';
-      html+=' <span style="color:var(--gray);">— '+esc(p.eventoAdverso)+'</span></div>';
-    });
-    html+='</div>';
-  }
-
-  // Tabela
   html+='<div class="card" style="padding:16px;overflow-x:auto;margin-bottom:12px;">';
-  html+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:10px;">Pacientes no Período ('+total+')</div>';
-  if(total===0){html+='<div style="color:var(--gray);font-size:13px;text-align:center;padding:24px;">Nenhum paciente neste mês.</div>';}
-  else{
+  html+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:10px;">Pacientes no Periodo ('+total+') - por data internamento</div>';
+  if(total===0){
+    html+='<div style="color:var(--gray);font-size:13px;text-align:center;padding:24px;">Nenhum paciente neste periodo.</div>';
+  } else {
     html+='<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:var(--surface);">';
-    ["Prontuário","Nome","Setor","Internamento","Alta","Dias","Dias UTI","% UTI","Diagnóstico","EV","Ress.","PAC"].forEach(function(h){
+    ["Internamento","Prontuario","Nome","Setor","Alta","Dias","UTI","% UTI","Diagnostico","EV","Ress","PAC"].forEach(function(h){
       html+='<th style="padding:6px 8px;text-align:left;color:var(--gray);font-weight:700;border-bottom:2px solid var(--border);white-space:nowrap;">'+h+'</th>';
     });
     html+='</tr></thead><tbody>';
     pp.forEach(function(p){
       var diasT=p.diasTotal||0;
       var diasU=p.diasUTI||0;
-      var pct=diasT>0?(diasU/diasT*100).toFixed(0)+"%" : (p.dataAlta?"0%":"—");
+      var pct=diasT>0?(diasU/diasT*100).toFixed(0)+"%" : (p.dataAlta?"0%":"---");
       html+='<tr style="border-bottom:1px solid var(--border);">';
+      html+='<td style="padding:5px 8px;white-space:nowrap;">'+fmt(p.dataInternamento)+'</td>';
       html+='<td style="padding:5px 8px;color:var(--gray);">'+esc(p.prontuario)+'</td>';
       html+='<td style="padding:5px 8px;font-weight:500;white-space:nowrap;">'+esc(p.nome)+'</td>';
       html+='<td style="padding:5px 8px;">'+(p.dataAlta?'<span class="badge b-alta">Alta</span>':'<span class="badge '+(p.setor==="UTI"?"b-uti":"b-ui")+'">'+esc(p.setor||"UI")+'</span>')+'</td>';
-      html+='<td style="padding:5px 8px;white-space:nowrap;">'+fmt(p.dataInternamento)+'</td>';
       html+='<td style="padding:5px 8px;white-space:nowrap;">'+fmt(p.dataAlta)+'</td>';
       html+='<td style="padding:5px 8px;">'+diasT+'</td>';
       html+='<td style="padding:5px 8px;">'+diasU+'</td>';
       html+='<td style="padding:5px 8px;">'+pct+'</td>';
       html+='<td style="padding:5px 8px;">'+esc(p.diagnosticoPrincipal)+'</td>';
-      html+='<td style="padding:5px 8px;">'+(p.eventoAdverso&&p.eventoAdverso!=="Não"?'<span class="badge b-ev">⚠</span>':'—')+'</td>';
-      html+='<td style="padding:5px 8px;">'+(p.ressonancia?'<span class="badge b-ac">Sim</span>':'—')+'</td>';
-      html+='<td style="padding:5px 8px;">'+(p.procedimentoAlto?'<span class="badge b-ac">Sim</span>':'—')+'</td>';
+      html+='<td style="padding:5px 8px;">'+(p.eventoAdverso&&p.eventoAdverso!=="Nao"?'<span class="badge b-ev">!</span>':'---')+'</td>';
+      html+='<td style="padding:5px 8px;">'+(p.ressonancia?'S':'---')+'</td>';
+      html+='<td style="padding:5px 8px;">'+(p.procedimentoAlto?'S':'---')+'</td>';
       html+='</tr>';
     });
     html+='</tbody></table>';
   }
   html+='</div>';
-  html+='<div style="font-size:11px;color:var(--gray);text-align:center;">Viver Saúde · Hospital Rio Grande · '+fmt(tod())+'</div>';
+  html+='<div style="font-size:11px;color:var(--gray);text-align:center;">Viver Saude - Hospital Rio Grande - '+fmt(tod())+'</div>';
   el("content").innerHTML=html;
 }
 function navMes(dir){
   var d=new Date(S.rAno,S.rMes+dir,1);
-  S.rMes=d.getMonth();S.rAno=d.getFullYear();
+  S.rMes=d.getMonth();S.rAno=d.getFullYear();S.detalhe=null;
   renderRelatorio();
 }
 
 function showErro(msg){
   el("content").innerHTML='<div style="margin:16px;padding:14px;background:#fdecea;border-radius:10px;color:var(--red);font-size:13px;">⚠ '+esc(msg)+'<button class="btn bd sm" onclick="loadData()" style="margin-left:8px;">Tentar novamente</button></div>';
+}
+
+
+// ══════════════════════════════
+// RESTAURAR / APAGAR CONCLUÍDO
+// ══════════════════════════════
+function restaurarPaciente(id){
+  if(!confirm("Retornar ao censo de internados?"))return;
+  var p=S.discharged.filter(function(x){return x.id===id;})[0];
+  if(!p)return;
+  var data=Object.assign({},p,{dataAlta:null,diasUTI:0,diasTotal:0});
+  delete data.id;
+  fsAdd("pacientes_ativos",data,function(err){
+    if(err){alert("Erro: "+err);return;}
+    fsDel("pacientes_alta",id,function(err2){
+      if(err2){alert("Erro: "+err2);return;}
+      toast("Paciente retornado ao censo");loadData();
+    });
+  });
+}
+function apagarConcluido(id){
+  if(!confirm("Apagar permanentemente este registro?"))return;
+  fsDel("pacientes_alta",id,function(err){
+    if(err){alert("Erro: "+err);return;}
+    toast("Registro apagado");loadData();
+  });
 }
 
 // ══════════════════════════════
