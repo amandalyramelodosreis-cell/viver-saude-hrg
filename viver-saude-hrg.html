@@ -18,7 +18,8 @@ input,select,textarea{font-family:'DM Sans',Arial,sans-serif;font-size:14px;
 input:focus,select:focus,textarea:focus{border-color:var(--teal);}
 label{font-size:11px;font-weight:600;color:var(--gray);text-transform:uppercase;
   letter-spacing:.5px;margin-bottom:4px;display:block;}
-button{font-family:'DM Sans',Arial,sans-serif;cursor:pointer;border:none;border-radius:8px;font-weight:600;-webkit-tap-highlight-color:transparent;}
+button{font-family:'DM Sans',Arial,sans-serif;cursor:pointer;border:none;
+  border-radius:8px;font-weight:600;-webkit-tap-highlight-color:transparent;}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 18px;font-size:13px;}
 .bp{background:var(--teal);color:white;}.bs{background:var(--green);color:white;}
 .bd{background:var(--red);color:white;}.bg{background:transparent;color:var(--gray);border:2px solid var(--border);}
@@ -28,7 +29,7 @@ button{font-family:'DM Sans',Arial,sans-serif;cursor:pointer;border:none;border-
 .b-uti{background:#fdecea;color:#c0392b;}.b-ui{background:#e3f4f9;color:#0a7fa8;}
 .b-pend{background:#fef3c7;color:#92400e;}.b-ok{background:#dcfce7;color:#15803d;}
 .b-alta{background:#dcfce7;color:#15803d;}.b-ac{background:#fde8d8;color:#9a3412;}
-.b-ev{background:#fdecea;color:#c0392b;}
+.b-ev{background:#fdecea;color:#c0392b;}.b-readm{background:#fde8d8;color:#9a3412;}
 .chip{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--border);
   color:var(--navy);font-weight:500;white-space:nowrap;background:var(--surface);}
 .hidden{display:none!important;}
@@ -55,6 +56,9 @@ button{font-family:'DM Sans',Arial,sans-serif;cursor:pointer;border:none;border-
 .minikpi{padding:12px 14px;}
 .bar-bg{height:6px;background:var(--border);border-radius:99px;margin-top:3px;}
 .bar-fill{height:6px;background:var(--teal);border-radius:99px;}
+/* Semáforo */
+.sem-amarelo{border-left-color:#d97706!important;}
+.sem-vermelho{border-left-color:#c0392b!important;}
 .empty{text-align:center;padding:48px 0;color:var(--gray);}
 .spin{animation:spin 1s linear infinite;display:inline-block;}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -63,8 +67,12 @@ button{font-family:'DM Sans',Arial,sans-serif;cursor:pointer;border:none;border-
 #toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:9999;
   background:var(--green);color:white;padding:8px 20px;border-radius:999px;
   font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(0,0,0,.2);white-space:nowrap;}
-@media print{#header,.np{display:none!important;}body{background:white;}
-  .card{box-shadow:none;border:1px solid #ddd;}#content{padding:0;}}
+@media print{
+  #header,.np{display:none!important;}
+  body{background:white;}
+  .card{box-shadow:none;border:1px solid #ddd;}
+  #content{padding:0;}
+}
 </style>
 </head>
 <body>
@@ -73,15 +81,13 @@ button{font-family:'DM Sans',Arial,sans-serif;cursor:pointer;border:none;border-
 
 <!-- MODAL ALTA -->
 <div id="modal-alta" class="modal-bg hidden">
-  <div class="card" style="width:100%;max-width:400px;padding:28px;">
+  <div class="card" style="width:100%;max-width:400px;padding:28px;overflow-y:auto;max-height:90vh;">
     <div class="serif" style="font-size:18px;color:var(--navy);margin-bottom:4px;">Confirmar Alta</div>
     <div id="modal-alta-nome" style="font-size:13px;color:var(--gray);margin-bottom:16px;"></div>
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div><label>Data da alta</label><input type="date" id="modal-alta-data"/></div>
-      <div><label>Dias em UTI (se aplicável)</label>
-        <input type="number" id="modal-dias-uti" placeholder="0" min="0"/></div>
-      <div><label>Evento adverso evitável</label>
-        <input type="text" id="modal-ev" placeholder="Descreva ou deixe em branco"/></div>
+      <div><label>Dias em UTI</label><input type="number" id="modal-dias-uti" placeholder="0" min="0"/></div>
+      <div><label>Evento adverso evitável</label><input type="text" id="modal-ev" placeholder="Descreva ou deixe em branco"/></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px;">
       <button class="btn bg" style="flex:1;" id="modal-alta-cancel">Cancelar</button>
@@ -105,7 +111,6 @@ button{font-family:'DM Sans',Arial,sans-serif;cursor:pointer;border:none;border-
         <input id="campo-senha" type="password" placeholder="sua senha" autocomplete="current-password"/></div>
       <div id="erro-login" class="hidden" style="color:var(--red);font-size:13px;margin-bottom:12px;">⚠ Credenciais inválidas.</div>
       <button id="botao-entrar" class="btn bp" style="width:100%;font-size:15px;padding:12px;">Entrar</button>
-      
     </div>
   </div>
 </div>
@@ -139,122 +144,93 @@ button{font-family:'DM Sans',Arial,sans-serif;cursor:pointer;border:none;border-
 </div>
 
 <script>
-// ══════════════════════════════
-// FIREBASE
-// ══════════════════════════════
-var KEY  = "AIzaSyDRQt4PiG94l7xPFbNfkeL-FXUIytz6IO4";
-var PID  = "viver-saude---hrg";
-var BASE = "https://firestore.googleapis.com/v1/projects/"+PID+"/databases/(default)/documents";
+// ══════════════════════════════════════════
+// API — Google Sheets via Apps Script
+// ══════════════════════════════════════════
+var API = "https://script.google.com/macros/s/AKfycbzYLHwg3UZMYjvEoygV5km8tJ0-ZmaUmLJd_VGnPmSGc_nLF53kmSJRAzQ08mAkxH91uA/exec";
 
-function toFS(obj){
-  var f={};
-  Object.keys(obj).forEach(function(k){
-    var v=obj[k];
-    if(v===null||v===undefined) f[k]={nullValue:null};
-    else if(typeof v==="boolean") f[k]={booleanValue:v};
-    else if(typeof v==="number") f[k]={integerValue:String(v)};
-    else if(Array.isArray(v)) f[k]={arrayValue:{values:v.map(function(i){return{stringValue:String(i)};})}};
-    else f[k]={stringValue:String(v)};
-  });
-  return{fields:f};
-}
-function fromFS(doc){
-  var obj={id:doc.name.split("/").pop()};
-  Object.keys(doc.fields||{}).forEach(function(k){
-    var v=doc.fields[k];
-    if(v.stringValue!==undefined) obj[k]=v.stringValue;
-    else if(v.booleanValue!==undefined) obj[k]=v.booleanValue;
-    else if(v.integerValue!==undefined) obj[k]=Number(v.integerValue);
-    else if(v.nullValue!==undefined) obj[k]=null;
-    else if(v.arrayValue!==undefined) obj[k]=(v.arrayValue.values||[]).map(function(i){return i.stringValue||"";});
-    else obj[k]=null;
-  });
-  return obj;
-}
-function fsGet(col,cb){
-  var all=[];
-  function page(token){
-    var url=BASE+"/"+col+"?key="+KEY+"&pageSize=300";
-    if(token) url+="&pageToken="+encodeURIComponent(token);
-    fetch(url).then(function(r){return r.json();}).then(function(d){
-      if(d.error){cb(d.error.message);return;}
-      all=all.concat((d.documents||[]).map(fromFS));
-      if(d.nextPageToken) page(d.nextPageToken); else cb(null,all);
-    }).catch(function(e){cb(e.message);});
-  }
-  page(null);
-}
-function fsAdd(col,data,cb){
-  fetch(BASE+"/"+col+"?key="+KEY,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(toFS(data))})
-    .then(function(r){return r.json();})
-    .then(function(d){if(d.error)cb(d.error.message);else cb(null,fromFS(d));})
-    .catch(function(e){cb(e.message);});
-}
-function fsUpdate(col,id,data,cb){
-  var fs=toFS(data);
-  var mask=Object.keys(fs.fields).map(function(k){return"updateMask.fieldPaths="+encodeURIComponent(k);}).join("&");
-  fetch(BASE+"/"+col+"/"+id+"?key="+KEY+"&"+mask,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(fs)})
-    .then(function(r){return r.json();})
-    .then(function(d){if(d.error)cb(d.error.message);else cb(null,fromFS(d));})
-    .catch(function(e){cb(e.message);});
-}
-function fsDel(col,id,cb){
-  fetch(BASE+"/"+col+"/"+id+"?key="+KEY,{method:"DELETE"})
-    .then(function(){cb(null);}).catch(function(e){cb(e.message);});
+function apiGet(action, params, cb) {
+  var url = API + "?action=" + action;
+  if (params) Object.keys(params).forEach(function(k){ url += "&" + k + "=" + encodeURIComponent(params[k]); });
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if(d.success !== false) cb(null, d); else cb(d.error || "Erro"); })
+    .catch(function(e){ cb(e.message); });
 }
 
-// ══════════════════════════════
+function apiPost(action, params, body, cb) {
+  var url = API + "?action=" + action;
+  if (params) Object.keys(params).forEach(function(k){ url += "&" + k + "=" + encodeURIComponent(params[k]); });
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if(d.success !== false) cb(null, d); else cb(d.error || "Erro"); })
+    .catch(function(e){ cb(e.message); });
+}
+
+function gsGet(aba, cb)        { apiGet("getAll",  { aba: aba }, function(err, d){ cb(err, d ? d.data : null); }); }
+function gsAdd(aba, obj, cb)   { apiPost("add",    { aba: aba }, obj, function(err, d){ cb(err, d ? d.data : null); }); }
+function gsUpdate(aba, id, obj, cb){ apiPost("update", { aba: aba, id: id }, obj, function(err, d){ cb(err, d ? d.data : null); }); }
+function gsDel(aba, id, cb)    { apiGet("delete",  { aba: aba, id: id }, function(err){ cb(err); }); }
+
+// ══════════════════════════════════════════
 // STATE
-// ══════════════════════════════
-var S={
-  session:null,active:[],discharged:[],
-  tab:"censo",subTab:"internados",
-  editing:null,discharging:null,
-  filterSetor:"Todos",filterPend:false,filterSearch:"",
-  dSearch:"",rMes:null,rAno:null,rFrom:"",rTo:"",rMode:"mes",detalhe:null,editingConc:null,
-  openCards:{},formEsps:[],novoConcluido:false
+// ══════════════════════════════════════════
+var S = {
+  session:null, active:[], discharged:[],
+  tab:"censo", subTab:"internados",
+  editing:null, editingConc:null, discharging:null,
+  filterSetor:"Todos", filterPend:false, filterSearch:"",
+  dSearch:"", rMes:null, rAno:null, rFrom:"", rTo:"", rMode:"mes", detalhe:null,
+  openCards:{}, formEsps:[], novoConcluido:false
 };
 
-// ══════════════════════════════
+// ══════════════════════════════════════════
 // UTILS
-// ══════════════════════════════
-function tod(){return new Date().toISOString().split("T")[0];}
-function fmt(d){return d?new Date(d+"T12:00:00").toLocaleDateString("pt-BR"):"—";}
-function diffDays(a,b){return Math.max(0,Math.floor((new Date((b||tod())+"T12:00:00")-new Date(a+"T12:00:00"))/86400000));}
-function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
-function toast(msg){var t=document.getElementById("toast");t.textContent=msg;t.classList.remove("hidden");setTimeout(function(){t.classList.add("hidden");},2800);}
-function el(id){return document.getElementById(id);}
-function val(id){return el(id)?el(id).value:"";}
-function chk(id){return el(id)?el(id).checked:false;}
-function not_zero(v){var s=String(v||"").trim();return s!=='0'&&s!==''&&s!=='NA'&&s!=='NÃO'&&s!=='false';}
+// ══════════════════════════════════════════
+function tod(){ return new Date().toISOString().split("T")[0]; }
+function fmt(d){ return d ? new Date(d+"T12:00:00").toLocaleDateString("pt-BR") : "—"; }
+function diffDays(a,b){ return Math.max(0,Math.floor((new Date((b||tod())+"T12:00:00")-new Date(a+"T12:00:00"))/86400000)); }
+function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function toast(msg,clr){ var t=document.getElementById("toast"); t.textContent=msg; t.style.background=clr||"var(--green)"; t.classList.remove("hidden"); setTimeout(function(){t.classList.add("hidden");},2800); }
+function el(id){ return document.getElementById(id); }
+function val(id){ return el(id)?el(id).value:""; }
+function chk(id){ return el(id)?el(id).checked:false; }
+function semaforo(dias){ if(dias>=15) return "sem-vermelho"; if(dias>=10) return "sem-amarelo"; return ""; }
+function isEv(v){ var s=String(v||"").trim().toLowerCase(); return s&&s!=="nao"&&s!=="não"&&s!=="0"&&s!=="na"&&s!=="false"; }
 
 var ESPS=["Cardiologia","Clínica Médica","Neurologia","Ortopedia","Obstetrícia","Urologia","Ginecologia","Oncologia","Nefrologia","Pneumologia","Gastroenterologia","Infectologia","Pediatria","Cirurgia Geral","Cirurgia Torácica","Bucomaxilofacial","Cirurgia de Cabeça e Pescoço","Psiquiatria","Outro"];
-var USERS=[{user:"moderadora",pass:"viver2026",role:"moderadora",nome:"Dra. Admin"},{user:"equipe1",pass:"hosp123",role:"equipe",nome:"Equipe HRG"},{user:"equipe2",pass:"hosp456",role:"equipe",nome:"Equipe HRG 2"}];
+var TIPOS_INT=["Urgência","Eletivo","Não informado"];
 var MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+var USERS=[
+  {user:"moderadora",pass:"viver2026",role:"moderadora",nome:"Dra. Admin"},
+  {user:"equipe1",   pass:"hosp123",  role:"equipe",    nome:"Equipe HRG"},
+  {user:"equipe2",   pass:"hosp456",  role:"equipe",    nome:"Equipe HRG 2"}
+];
 
-// ══════════════════════════════
+// ══════════════════════════════════════════
 // DATA
-// ══════════════════════════════
+// ══════════════════════════════════════════
 var pollTimer=null;
 function loadData(){
+  if(S.tab==="novo"||S.editing) return;
   updateHeaderSub("sincronizando...");
-  fsGet("pacientes_ativos",function(err,data){
-    if(err){showErro(err);return;}
-    S.active=data;
-    fsGet("pacientes_alta",function(err2,data2){
-      if(err2){showErro(err2);return;}
-      S.discharged=data2;
+  gsGet("pacientes_ativos",function(err,data){
+    if(err){ showErro(err); return; }
+    S.active = data||[];
+    gsGet("pacientes_alta",function(err2,data2){
+      if(err2){ showErro(err2); return; }
+      S.discharged = data2||[];
       updateStats();
       renderContent();
       updateHeaderSub("● ao vivo");
     });
   });
 }
-function startPolling(){if(pollTimer)clearInterval(pollTimer);pollTimer=setInterval(function(){
-  // Não atualiza se formulário estiver aberto
-  if(S.tab==="novo"||S.editing) return;
-  loadData();
-},30000);}
+function startPolling(){ if(pollTimer)clearInterval(pollTimer); pollTimer=setInterval(loadData,35000); }
 
 function updateStats(){
   var uti=S.active.filter(function(p){return p.setor==="UTI";}).length;
@@ -266,12 +242,12 @@ function updateStats(){
   el("stat-pen-bub").style.display=pen>0?"":"none";
 }
 function updateHeaderSub(txt){
-  if(el("header-sub"))el("header-sub").textContent=(S.session?S.session.nome+" · "+(S.session.role==="moderadora"?"Moderadora":"Equipe")+" · ":"")+txt;
+  if(el("header-sub")) el("header-sub").textContent=(S.session?S.session.nome+" · "+(S.session.role==="moderadora"?"Moderadora":"Equipe")+" · ":"")+txt;
 }
 function renderTabs(){
   var isMod=S.session&&S.session.role==="moderadora";
-  var tabs=[{k:"censo",l:"📋 Censo"}];
-  if(isMod)tabs.push({k:"novo",l:"+ Internação"});
+  var tabs=[{k:"censo",l:"📋 Censo"},{k:"diario",l:"📱 Diário"}];
+  if(isMod) tabs.push({k:"novo",l:"+ Internação"});
   tabs.push({k:"relatorio",l:"📊 Relatórios"});
   var html=tabs.map(function(t){
     var a=S.tab===t.k;
@@ -281,92 +257,165 @@ function renderTabs(){
   html+='<button onclick="logout()" style="padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);border:none;font-size:11px;">Sair</button>';
   el("tabs-container").innerHTML=html;
 }
-function setTab(t){S.tab=t;S.editing=null;S.novoConcluido=false;renderTabs();renderContent();}
+function setTab(t){ S.tab=t; S.editing=null; S.novoConcluido=false; renderTabs(); renderContent(); }
 function logout(){
   if(pollTimer)clearInterval(pollTimer);
-  S.session=null;
+  S.session=null; S.active=[]; S.discharged=[];
   el("tela-app").classList.add("hidden");
-  el("campo-usuario").value="";el("campo-senha").value="";
+  el("campo-usuario").value=""; el("campo-senha").value="";
   el("erro-login").classList.add("hidden");
   el("tela-login").classList.remove("hidden");
 }
 function renderContent(){
-  if(S.tab==="novo"||S.editing) renderForm();
-  else if(S.tab==="relatorio") renderRelatorio();
-  else renderCenso();
+  if(S.tab==="novo"||S.editing)        renderForm();
+  else if(S.tab==="relatorio")          renderRelatorio();
+  else if(S.tab==="diario")             renderCensoDiario();
+  else                                   renderCenso();
 }
 
-// ══════════════════════════════
+// ══════════════════════════════════════════
+// CENSO DIÁRIO
+// ══════════════════════════════════════════
+function renderCensoDiario(){
+  var now=new Date();
+  var dateStr=now.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});
+  var uti=S.active.filter(function(p){return p.setor==="UTI";});
+  var ui=S.active.filter(function(p){return p.setor!=="UTI";});
+
+  var html='<div style="max-width:480px;margin:0 auto;">';
+  html+='<div class="np" style="margin-bottom:12px;">';
+  html+='<button class="btn bp" style="width:100%;" onclick="window.print()">📱 Salvar / Imprimir para WhatsApp</button>';
+  html+='</div>';
+  html+='<div style="background:white;border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(13,33,55,.12);">';
+  html+='<div style="text-align:center;border-bottom:2px solid var(--teal);padding-bottom:12px;margin-bottom:16px;">';
+  html+='<div style="font-family:serif;font-size:18px;color:var(--navy);font-weight:700;">🏥 Viver Saúde · HRG</div>';
+  html+='<div style="font-size:12px;color:var(--gray);margin-top:3px;">Censo Diário de Internados</div>';
+  html+='<div style="font-size:13px;color:var(--navy);font-weight:600;margin-top:3px;">'+dateStr+'</div>';
+  html+='</div>';
+
+  html+='<div class="grid3" style="margin-bottom:16px;">';
+  html+='<div style="background:var(--teal-light);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--teal);">'+S.active.length+'</div><div style="font-size:10px;color:var(--gray);font-weight:600;text-transform:uppercase;">Total</div></div>';
+  html+='<div style="background:#fdecea;border-radius:10px;padding:10px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--red);">'+uti.length+'</div><div style="font-size:10px;color:var(--gray);font-weight:600;text-transform:uppercase;">UTI</div></div>';
+  html+='<div style="background:var(--green-light);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--green);">'+ui.length+'</div><div style="font-size:10px;color:var(--gray);font-weight:600;text-transform:uppercase;">UI</div></div>';
+  html+='</div>';
+
+  function bloco(lista, cor, titulo){
+    if(!lista.length) return "";
+    var h='<div style="margin-bottom:14px;">';
+    h+='<div style="font-size:11px;font-weight:700;color:'+cor+';text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid '+(cor==="var(--red)"?"#fdecea":"var(--teal-light)")+';">'+titulo+' ('+lista.length+')</div>';
+    lista.forEach(function(p){
+      var dias=diffDays(p.dataInternamento);
+      var sem=semaforo(dias);
+      h+='<div style="padding:8px 0;border-bottom:1px solid #f1f5f9;'+(sem==="sem-vermelho"?"border-left:3px solid var(--red);padding-left:6px;":"")+(sem==="sem-amarelo"?"border-left:3px solid var(--amber);padding-left:6px;":"")+'">';
+      h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
+      h+='<div style="flex:1;">';
+      h+='<div style="font-size:13px;font-weight:600;color:var(--navy);">'+esc(p.nome)+'</div>';
+      h+='<div style="font-size:11px;color:var(--gray);margin-top:1px;">'+esc(p.prontuario)+' · '+esc((p.especialidades||[]).join(", "))+'</div>';
+      h+='<div style="font-size:12px;color:var(--navy);margin-top:2px;">'+esc(p.diagnosticoPrincipal)+'</div>';
+      if(p.pendencia) h+='<div style="font-size:11px;color:var(--amber);margin-top:2px;">⚠ '+esc(p.pendencia)+'</div>';
+      h+='</div>';
+      h+='<div style="text-align:right;font-size:11px;color:var(--gray);margin-left:8px;white-space:nowrap;">';
+      h+=dias+'d';
+      if(p.dataAltaPrevista) h+='<br>Alta: '+fmt(p.dataAltaPrevista);
+      h+='</div></div></div>';
+    });
+    h+='</div>';
+    return h;
+  }
+
+  if(S.active.length===0){
+    html+='<div style="text-align:center;padding:24px;color:var(--gray);">Nenhum paciente internado.</div>';
+  } else {
+    html+=bloco(uti,"var(--red)","🔴 UTI");
+    html+=bloco(ui,"var(--teal)","🔵 Unidade de Internação");
+  }
+
+  html+='<div style="text-align:center;font-size:10px;color:#94a3b8;margin-top:12px;padding-top:10px;border-top:1px solid #f1f5f9;">';
+  html+=now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+' · Viver Saúde · HRG</div>';
+  html+='</div></div>';
+  el("content").innerHTML=html;
+}
+
+// ══════════════════════════════════════════
 // CENSO
-// ══════════════════════════════
+// ══════════════════════════════════════════
 function renderCenso(){
   var isMod=S.session&&S.session.role==="moderadora";
   var fa=S.active.filter(function(p){
-    if(S.filterSetor!=="Todos"&&p.setor!==S.filterSetor)return false;
-    if(S.filterPend&&!p.pendencia)return false;
-    if(S.filterSearch){var q=S.filterSearch.toLowerCase();
-      return(p.nome||"").toLowerCase().indexOf(q)>=0||(p.prontuario||"").toLowerCase().indexOf(q)>=0||(p.diagnosticoPrincipal||"").toLowerCase().indexOf(q)>=0;}
+    if(S.filterSetor!=="Todos"&&p.setor!==S.filterSetor) return false;
+    if(S.filterPend&&!p.pendencia) return false;
+    if(S.filterSearch){
+      var q=S.filterSearch.toLowerCase();
+      return (p.nome||"").toLowerCase().indexOf(q)>=0||(p.prontuario||"").toLowerCase().indexOf(q)>=0||(p.diagnosticoPrincipal||"").toLowerCase().indexOf(q)>=0;
+    }
     return true;
   });
-  // Sort discharged by alta date descending
-  var dischSorted=S.discharged.slice().sort(function(a,b){
-    return (b.dataAlta||"").localeCompare(a.dataAlta||"");
-  });
+  var dischSorted=S.discharged.slice().sort(function(a,b){return(b.dataAlta||"").localeCompare(a.dataAlta||"");});
   var fd=dischSorted.filter(function(p){
-    if(!S.dSearch)return true;var q=S.dSearch.toLowerCase();
-    return(p.nome||"").toLowerCase().indexOf(q)>=0||(p.prontuario||"").toLowerCase().indexOf(q)>=0;
+    if(!S.dSearch) return true;
+    var q=S.dSearch.toLowerCase();
+    return (p.nome||"").toLowerCase().indexOf(q)>=0||(p.prontuario||"").toLowerCase().indexOf(q)>=0;
   });
-  var totalDias=S.discharged.reduce(function(a,p){return a+(p.diasTotal||0);},0);
-  var totalDiasUTI=S.discharged.reduce(function(a,p){return a+(p.diasUTI||0);},0);
-  var pctUTI=totalDias>0?((totalDiasUTI/totalDias)*100).toFixed(1)+"%":"—";
-  var avgPerm=S.discharged.length?(S.discharged.reduce(function(a,p){return a+(p.diasTotal||0);},0)/S.discharged.length).toFixed(1)+"d":"—";
+  var totalDias=S.discharged.reduce(function(a,p){return a+(Number(p.diasTotal)||0);},0);
+  var totalUTIDias=S.discharged.reduce(function(a,p){return a+(Number(p.diasUTI)||0);},0);
+  var pctUTI=totalDias>0?((totalUTIDias/totalDias)*100).toFixed(1)+"%":"—";
+  var avgPerm=S.discharged.length?(totalDias/S.discharged.length).toFixed(1)+"d":"—";
   var thisMon=S.discharged.filter(function(p){
     if(!p.dataAlta)return false;
-    var n=new Date();
-    var d=new Date(p.dataAlta+"T12:00:00");
+    var d=new Date(p.dataAlta+"T12:00:00"),n=new Date();
     return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();
   }).length;
 
   var html='<div style="display:flex;gap:8px;margin-bottom:14px;">';
-  ["internados","concluidos"].forEach(function(k){
-    var lbl=k==="internados"?"🏥 Internados ("+S.active.length+")":"✅ Concluídos ("+S.discharged.length+")";
-    var a=S.subTab===k;
-    html+='<button class="subtab" onclick="setSubTab(\''+k+'\')" style="background:'+(a?"var(--navy)":"white")+';color:'+(a?"white":"var(--gray)")+';border-color:'+(a?"var(--navy)":"var(--border)")+';">'+lbl+'</button>';
+  [["internados","🏥 Internados ("+S.active.length+")"],["concluidos","✅ Concluídos ("+S.discharged.length+")"]].forEach(function(x){
+    var a=S.subTab===x[0];
+    html+='<button class="subtab" onclick="setSubTab(\''+x[0]+'\')" style="background:'+(a?"var(--navy)":"white")+';color:'+(a?"white":"var(--gray)")+';border-color:'+(a?"var(--navy)":"var(--border)")+';">'+x[1]+'</button>';
   });
   html+='</div>';
 
   if(S.subTab==="internados"){
     html+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">';
     html+='<input type="text" id="fsearch" placeholder="🔍 Nome, prontuário, diagnóstico..." value="'+esc(S.filterSearch)+'" oninput="S.filterSearch=this.value;renderCenso();" style="flex:2;min-width:160px;"/>';
-    html+='<select id="fsetor" onchange="S.filterSetor=this.value;renderCenso();" style="flex:1;min-width:100px;"><option'+(S.filterSetor==="Todos"?" selected":"")+'>Todos</option><option'+(S.filterSetor==="UTI"?" selected":"")+'>UTI</option><option value="Unidade de Internação"'+(S.filterSetor==="Unidade de Internação"?" selected":"")+'>Unidade de Internação</option></select>';
+    html+='<select id="fsetor" onchange="S.filterSetor=this.value;renderCenso();" style="flex:1;min-width:100px;">';
+    html+='<option'+(S.filterSetor==="Todos"?" selected":"")+'>Todos</option>';
+    html+='<option'+(S.filterSetor==="UTI"?" selected":"")+'>UTI</option>';
+    html+='<option value="Unidade de Internação"'+(S.filterSetor==="Unidade de Internação"?" selected":"")+'>Unidade de Internação</option>';
+    html+='</select>';
     html+='<button onclick="S.filterPend=!S.filterPend;renderCenso();" style="padding:9px 12px;border-radius:8px;border:2px solid;font-size:12px;background:'+(S.filterPend?"var(--amber-light)":"white")+';color:'+(S.filterPend?"var(--amber)":"var(--gray)")+';border-color:'+(S.filterPend?"var(--amber)":"var(--border)")+';">⚠ Pendentes</button>';
+    html+='</div>';
+    // Legenda semáforo
+    html+='<div style="display:flex;gap:8px;margin-bottom:10px;font-size:11px;color:var(--gray);">';
+    html+='<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--amber);display:inline-block;"></span>≥10 dias</span>';
+    html+='<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--red);display:inline-block;"></span>≥15 dias</span>';
     html+='</div>';
     if(fa.length===0) html+='<div class="empty"><div style="font-size:32px;">🏥</div><div style="margin-top:8px;font-size:13px;">Nenhum paciente internado.</div></div>';
     else fa.forEach(function(p){html+=renderCard(p,false,isMod);});
   } else {
-    if(isMod) html+='<button class="btn bs" style="width:100%;margin-bottom:12px;" onclick="S.novoConcluido=!S.novoConcluido;renderCenso();">'+(S.novoConcluido?"✕ Cancelar":"+ Cadastrar paciente com alta")+'</button>';
+    if(isMod) html+='<button class="btn bs" style="width:100%;margin-bottom:12px;" onclick="S.novoConcluido=!S.novoConcluido;S.editingConc=null;renderCenso();">'+(S.novoConcluido?"✕ Cancelar":"+ Cadastrar paciente com alta")+'</button>';
     if(S.novoConcluido&&isMod) html+=renderFormConcluido();
     html+='<div style="margin-bottom:12px;"><input type="text" id="dsearch" placeholder="🔍 Buscar..." value="'+esc(S.dSearch)+'" oninput="S.dSearch=this.value;renderCenso();"/></div>';
     html+='<div class="grid4" style="margin-bottom:16px;">';
-    html+='<div class="card minikpi"><div style="font-size:18px;font-family:\'DM Serif Display\',serif;color:var(--teal);font-weight:700;">'+S.discharged.length+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;">Total altas</div></div>';
-    html+='<div class="card minikpi"><div style="font-size:18px;font-family:\'DM Serif Display\',serif;color:var(--teal);font-weight:700;">'+avgPerm+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;">Média perm.</div></div>';
-    html+='<div class="card minikpi"><div style="font-size:18px;font-family:\'DM Serif Display\',serif;color:var(--red);font-weight:700;">'+pctUTI+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;">% diárias UTI</div></div>';
-    html+='<div class="card minikpi"><div style="font-size:18px;font-family:\'DM Serif Display\',serif;color:var(--teal);font-weight:700;">'+thisMon+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;">Este mês</div></div>';
+    html+='<div class="card minikpi"><div style="font-size:18px;font-family:serif;color:var(--teal);font-weight:700;">'+S.discharged.length+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;">Total altas</div></div>';
+    html+='<div class="card minikpi"><div style="font-size:18px;font-family:serif;color:var(--teal);font-weight:700;">'+avgPerm+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;">Média perm.</div></div>';
+    html+='<div class="card minikpi"><div style="font-size:18px;font-family:serif;color:var(--red);font-weight:700;">'+pctUTI+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;">% UTI</div></div>';
+    html+='<div class="card minikpi"><div style="font-size:18px;font-family:serif;color:var(--teal);font-weight:700;">'+thisMon+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;">Este mês</div></div>';
     html+='</div>';
     if(fd.length===0) html+='<div class="empty"><div style="font-size:32px;">✅</div><div style="margin-top:8px;font-size:13px;">Nenhum atendimento concluído.</div></div>';
     else fd.forEach(function(p){html+=renderCard(p,true,isMod);});
   }
   el("content").innerHTML=html;
-  // buttons use inline onclick via window functions
 }
 function setSubTab(t){S.subTab=t;S.novoConcluido=false;S.editingConc=null;renderCenso();}
 
 function renderCard(p,discharged,isMod){
-  var dias=discharged?(p.diasTotal||diffDays(p.dataInternamento,p.dataAlta)):diffDays(p.dataInternamento);
+  var dias=discharged?(Number(p.diasTotal)||diffDays(p.dataInternamento,p.dataAlta)):diffDays(p.dataInternamento);
   var open=S.openCards[p.id];
+  var sem=discharged?"":semaforo(dias);
   var border=discharged?"var(--green)":p.setor==="UTI"?"var(--red)":"var(--teal)";
-  var evVal=(p.eventoAdverso||"").trim().toLowerCase();var temEv=evVal&&evVal!=="nao"&&evVal!=="não"&&evVal!=="0"&&evVal!=="na";
-  var html='<div class="card pcard" style="border-left:4px solid '+border+';">';
+  var temEv=isEv(p.eventoAdverso);
+  var isReadm=(p.readmissao30dias||"").toUpperCase()==="SIM";
+
+  var html='<div class="card pcard" style="border-left:4px solid '+border+';'+(sem==="sem-vermelho"?"border-left-color:var(--red)!important;":"")+(sem==="sem-amarelo"?"border-left-color:var(--amber)!important;":"")+'">';
   html+='<div style="padding:12px 14px;" onclick="toggleCard(\''+p.id+'\')">';
   html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">';
   html+='<div style="flex:1;"><div style="font-weight:600;font-size:14px;color:var(--navy);">'+esc(p.nome)+'</div>';
@@ -376,47 +425,52 @@ function renderCard(p,discharged,isMod){
   else html+='<span class="badge '+(p.setor==="UTI"?"b-uti":"b-ui")+'">'+esc(p.setor||"UI")+'</span>';
   if(p.pendencia&&!discharged) html+='<span class="badge b-pend">⚠ Pendência</span>';
   if(temEv) html+='<span class="badge b-ev">⚠ Ev. Adverso</span>';
+  if(isReadm) html+='<span class="badge b-readm">🔄 Readmissão</span>';
   html+='</div></div>';
   html+='<div style="margin-top:6px;font-size:12px;color:var(--navy);font-weight:500;">'+esc(p.diagnosticoPrincipal)+'</div>';
   html+='<div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;">';
-  html+='<span class="chip">📅 '+dias+'d</span>';
+  html+='<span class="chip" style="'+(sem==="sem-vermelho"?"background:#fdecea;border-color:var(--red);":(sem==="sem-amarelo"?"background:var(--amber-light);border-color:var(--amber)":""))+'">📅 '+dias+'d</span>';
   if(!discharged&&p.dataAltaPrevista) html+='<span class="chip">🏠 Prev: '+fmt(p.dataAltaPrevista)+'</span>';
-  if(discharged&&p.diasUTI>0) html+='<span class="chip" style="background:#fdecea;">🔴 UTI: '+p.diasUTI+'d</span>';
-  if(p.ressonancia) html+='<span class="chip" style="background:var(--amber-light);">🧲 Ressonância</span>';
-  if(p.procedimentoAlto) html+='<span class="chip" style="background:var(--amber-light);">⚡ Proc. Alto Custo</span>';
+  if(discharged&&Number(p.diasUTI)>0) html+='<span class="chip" style="background:#fdecea;">🔴 UTI: '+p.diasUTI+'d</span>';
+  if(p.ressonancia===true||p.ressonancia==="true"||p.ressonancia==="TRUE") html+='<span class="chip" style="background:var(--amber-light);">🧲 Ressonância</span>';
+  if(p.procedimentoAlto===true||p.procedimentoAlto==="true"||p.procedimentoAlto==="TRUE") html+='<span class="chip" style="background:var(--amber-light);">⚡ Proc. AC</span>';
   if(p.tipoInternamento&&p.tipoInternamento!=="Não informado") html+='<span class="chip">'+esc(p.tipoInternamento)+'</span>';
   html+='</div></div>';
+
   if(open){
     html+='<div style="border-top:1px solid var(--border);padding:12px 14px;background:var(--surface);">';
     html+=dr("Especialidade(s)",(p.especialidades||[]).join(", ")||"—");
     html+=dr("Internamento",fmt(p.dataInternamento));
-    html+=dr("Tipo internamento",p.tipoInternamento||"Não informado");
+    html+=dr("Tipo",p.tipoInternamento||"—");
     if(discharged){
-      html+=dr("Data alta",fmt(p.dataAlta));
-      html+=dr("Permanência total",(p.diasTotal||0)+" dia(s)");
-      html+=dr("Dias em UTI",(p.diasUTI||0)>0?p.diasUTI+"d":"Não");
-      var pct=(p.diasTotal||0)>0?((p.diasUTI||0)/(p.diasTotal||1)*100).toFixed(1)+"%":"Não avaliado";
-      html+=dr("% diárias UTI",pct);
+      html+=dr("Alta",fmt(p.dataAlta));
+      html+=dr("Permanência",(Number(p.diasTotal)||0)+" dia(s)");
+      html+=dr("Dias UTI",Number(p.diasUTI)>0?p.diasUTI+"d":"Não");
+      var pct=(Number(p.diasTotal)||0)>0?((Number(p.diasUTI)||0)/(Number(p.diasTotal)||1)*100).toFixed(1)+"%":"Não avaliado";
+      html+=dr("% UTI",pct);
+      html+=dr("Readmissão 30d",p.readmissao30dias||"NÃO");
     }
     if(p.resumoClinico) html+=dr("Resumo clínico",p.resumoClinico);
     if(p.pendencia) html+='<div class="dr-row" style="background:var(--amber-light);padding:4px 8px;border-radius:6px;"><span class="dr-lbl">⚠ Pendência</span><span class="dr-val">'+esc(p.pendencia)+'</span></div>';
-    html+=dr("Ressonância",p.ressonancia?"✓ Sim":"Não");
-    html+=dr("Proc. alto custo",p.procedimentoAlto?"✓ Sim":"Não");
-    html+=dr("Evento adverso",p.eventoAdverso||"Não");
+    html+=dr("Ressonância",(p.ressonancia===true||p.ressonancia==="true"||p.ressonancia==="TRUE")?"✓ Sim":"Não");
+    html+=dr("Proc. alto custo",(p.procedimentoAlto===true||p.procedimentoAlto==="true"||p.procedimentoAlto==="TRUE")?"✓ Sim":"Não");
+    if(p.procedimentoDescricao) html+=dr("Descrição proc.",p.procedimentoDescricao);
+    if(temEv) html+=dr("Evento adverso",p.eventoAdverso);
     if(p.prescricao) html+=dr("Prescrição",p.prescricao);
     if(p.observacoes) html+=dr("Observações",p.observacoes);
-    if(isMod&&discharged){
+
+    if(isMod&&!discharged){
       html+='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;" onclick="event.stopPropagation();">';
-      html+='<button class="btn bg sm" onclick="event.stopPropagation();editarConcluido(this.dataset.id)" data-id="'+p.id+'" style="font-size:11px;">&#x270F; Editar</button>';
-      html+='<button class="btn bs sm" onclick="event.stopPropagation();restaurarPaciente(this.dataset.id)" data-id="'+p.id+'" style="font-size:11px;">&#x21A9; Retornar</button>';
-      html+='<button class="btn bd sm" onclick="event.stopPropagation();apagarConcluido(this.dataset.id)" data-id="'+p.id+'" style="font-size:11px;">&#x1F5D1; Apagar</button>';
+      html+='<button class="btn bg sm" onclick="event.stopPropagation();editarPaciente(this.dataset.id)" data-id="'+p.id+'">✏ Editar</button>';
+      html+='<button class="btn bs sm" onclick="event.stopPropagation();iniciarAlta(this.dataset.id)" data-id="'+p.id+'">🏠 Dar Alta</button>';
+      html+='<button class="btn bd sm" onclick="event.stopPropagation();deletarPaciente(this.dataset.id)" data-id="'+p.id+'">🗑 Remover</button>';
       html+='</div>';
     }
-    if(isMod&&!discharged){
-      html+='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">';
-      html+='<button class="btn bg sm" onclick="editarPaciente(\''+p.id+'\')">✏ Editar</button>';
-      html+='<button class="btn bs sm" onclick="iniciarAlta(\''+p.id+'\')">🏠 Dar Alta</button>';
-      html+='<button class="btn bd sm" onclick="deletarPaciente(\''+p.id+'\')">🗑 Remover</button>';
+    if(isMod&&discharged){
+      html+='<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;" onclick="event.stopPropagation();">';
+      html+='<button class="btn bg sm" onclick="event.stopPropagation();editarConcluido(this.dataset.id)" data-id="'+p.id+'" style="font-size:11px;">✏ Editar</button>';
+      html+='<button class="btn bs sm" onclick="event.stopPropagation();restaurarPaciente(this.dataset.id)" data-id="'+p.id+'" style="font-size:11px;">↩ Retornar</button>';
+      html+='<button class="btn bd sm" onclick="event.stopPropagation();apagarConcluido(this.dataset.id)" data-id="'+p.id+'" style="font-size:11px;">🗑 Apagar</button>';
       html+='</div>';
     }
     html+='</div>';
@@ -424,15 +478,15 @@ function renderCard(p,discharged,isMod){
   html+='</div>';
   return html;
 }
-function dr(label,val){return'<div class="dr-row"><span class="dr-lbl">'+label+'</span><span class="dr-val">'+esc(val)+'</span></div>';}
+function dr(label,val){return'<div class="dr-row"><span class="dr-lbl">'+label+'</span><span class="dr-val">'+esc(String(val||""))+'</span></div>';}
 function toggleCard(id){S.openCards[id]=!S.openCards[id];renderCenso();}
 
-// ══════════════════════════════
+// ══════════════════════════════════════════
 // ALTA
-// ══════════════════════════════
+// ══════════════════════════════════════════
 function iniciarAlta(id){
   var p=S.active.filter(function(x){return x.id===id;})[0];
-  if(!p)return;
+  if(!p) return;
   S.discharging=p;
   el("modal-alta-nome").textContent=p.nome;
   el("modal-alta-data").value=tod();
@@ -442,7 +496,7 @@ function iniciarAlta(id){
 }
 el("modal-alta-cancel").addEventListener("click",function(){el("modal-alta").classList.add("hidden");S.discharging=null;});
 el("modal-alta-confirm").addEventListener("click",function(){
-  if(!S.discharging)return;
+  if(!S.discharging) return;
   var date=val("modal-alta-data");
   var diasUTI=parseInt(val("modal-dias-uti")||"0")||0;
   var ev=val("modal-ev").trim()||"Não";
@@ -450,39 +504,75 @@ el("modal-alta-confirm").addEventListener("click",function(){
   var diasTotal=diffDays(p.dataInternamento,date);
   var data=Object.assign({},p,{dataAlta:date,diasUTI:diasUTI,diasTotal:diasTotal,eventoAdverso:ev});
   delete data.id;
-  fsAdd("pacientes_alta",data,function(err){
-    if(err){alert("Erro: "+err);return;}
-    fsDel("pacientes_ativos",p.id,function(err2){
+  el("modal-alta-confirm").textContent="⏳ Salvando...";
+  gsAdd("pacientes_alta",data,function(err){
+    if(err){alert("Erro: "+err);el("modal-alta-confirm").textContent="✓ Confirmar Alta";return;}
+    gsDel("pacientes_ativos",p.id,function(err2){
       if(err2){alert("Erro: "+err2);return;}
       el("modal-alta").classList.add("hidden");
       S.discharging=null;
+      el("modal-alta-confirm").textContent="✓ Confirmar Alta";
       toast("✓ Alta registrada");
       loadData();
     });
   });
 });
 
-// ══════════════════════════════
-// CRUD
-// ══════════════════════════════
+// ══════════════════════════════════════════
+// CRUD INTERNADOS
+// ══════════════════════════════════════════
 function editarPaciente(id){
   var p=S.active.filter(function(x){return x.id===id;})[0];
-  if(!p)return;
+  if(!p) return;
   S.editing=Object.assign({},p,{especialidades:(p.especialidades||[]).slice()});
   S.formEsps=S.editing.especialidades.slice();
-  S.tab="novo";renderTabs();renderContent();
+  S.tab="novo"; renderTabs(); renderContent();
 }
 function deletarPaciente(id){
-  if(!confirm("Remover este paciente?"))return;
-  fsDel("pacientes_ativos",id,function(err){
+  if(!confirm("Remover este paciente?")) return;
+  gsDel("pacientes_ativos",id,function(err){
     if(err){alert("Erro: "+err);return;}
-    toast("✓ Removido");loadData();
+    toast("✓ Removido"); loadData();
   });
 }
 
-// ══════════════════════════════
+// ══════════════════════════════════════════
+// CRUD CONCLUÍDOS
+// ══════════════════════════════════════════
+function editarConcluido(id){
+  var p=S.discharged.filter(function(x){return x.id===id;})[0];
+  if(!p) return;
+  S.editingConc=Object.assign({},p,{especialidades:(p.especialidades||[]).slice()});
+  S.formEsps=S.editingConc.especialidades.slice();
+  S.novoConcluido=true;
+  S.subTab="concluidos";
+  renderCenso();
+}
+function restaurarPaciente(id){
+  if(!confirm("Retornar ao censo de internados?")) return;
+  var p=S.discharged.filter(function(x){return x.id===id;})[0];
+  if(!p) return;
+  var data=Object.assign({},p,{dataAlta:null,diasUTI:0,diasTotal:0,readmissao30dias:""});
+  delete data.id;
+  gsAdd("pacientes_ativos",data,function(err){
+    if(err){alert("Erro: "+err);return;}
+    gsDel("pacientes_alta",id,function(err2){
+      if(err2){alert("Erro: "+err2);return;}
+      toast("✓ Paciente retornado ao censo"); loadData();
+    });
+  });
+}
+function apagarConcluido(id){
+  if(!confirm("Apagar permanentemente este registro?")) return;
+  gsDel("pacientes_alta",id,function(err){
+    if(err){alert("Erro: "+err);return;}
+    toast("✓ Registro apagado"); loadData();
+  });
+}
+
+// ══════════════════════════════════════════
 // FORM INTERNAÇÃO
-// ══════════════════════════════
+// ══════════════════════════════════════════
 function renderForm(){
   var p=S.editing||{};
   var esps=S.formEsps||[];
@@ -500,11 +590,10 @@ function renderForm(){
   html+='<div class="grid2"><div><label>Data internamento</label><input type="date" id="f-din" value="'+esc(p.dataInternamento||tod())+'"/></div>';
   html+='<div><label>Alta prevista</label><input type="date" id="f-dap" value="'+esc(p.dataAltaPrevista||"")+'"/></div></div>';
   html+='<div class="grid2"><div><label>Setor</label><select id="f-setor"><option value="Unidade de Internação"'+((p.setor||"")==="Unidade de Internação"||!p.setor?" selected":"")+'>Unidade de Internação</option><option value="UTI"'+(p.setor==="UTI"?" selected":"")+'>UTI</option></select></div>';
-  html+='<div><label>Tipo de internamento</label><select id="f-tipo-int"><option value="Urgência"'+(p.tipoInternamento==="Urgência"?" selected":"")+'>Urgência</option><option value="Eletivo"'+(p.tipoInternamento==="Eletivo"?" selected":"")+'>Eletivo</option><option value="Não informado"'+((!p.tipoInternamento||p.tipoInternamento==="Não informado")?" selected":"")+'>Não informado</option></select></div></div>';
+  html+='<div><label>Tipo internamento</label><select id="f-tipo-int"><option value="Urgência"'+(p.tipoInternamento==="Urgência"?" selected":"")+'>Urgência</option><option value="Eletivo"'+(p.tipoInternamento==="Eletivo"?" selected":"")+'>Eletivo</option><option value="Não informado"'+((!p.tipoInternamento||p.tipoInternamento==="Não informado")?" selected":"")+'>Não informado</option></select></div></div>';
   html+='</div></div>';
 
-  html+='<div style="margin-bottom:20px;"><div class="sec-title">Especialidade(s)</div>';
-  html+='<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+  html+='<div style="margin-bottom:20px;"><div class="sec-title">Especialidade(s)</div><div style="display:flex;flex-wrap:wrap;gap:6px;">';
   ESPS.forEach(function(e){
     var sel=esps.indexOf(e)>=0;
     html+='<button class="esp-tag" onclick="toggleEsp(\''+esc(e)+'\')" id="esp-'+esc(e)+'" style="background:'+(sel?"var(--teal)":"white")+';color:'+(sel?"white":"var(--gray)")+';border-color:'+(sel?"var(--teal)":"var(--border)")+';">'+esc(e)+'</button>';
@@ -519,21 +608,22 @@ function renderForm(){
   html+='<div style="margin-bottom:20px;"><div class="sec-title">Pendências e Alertas</div><div style="display:flex;flex-direction:column;gap:10px;">';
   html+='<div><label>Pendência</label><input type="text" id="f-pend" value="'+esc(p.pendencia||"")+'" placeholder="Deixe em branco se não houver"/></div>';
   html+='<div class="grid2">';
-  html+=checkRow("f-ress","🧲 Ressonância",p.ressonancia);
-  html+=checkRow("f-proc","⚡ Proc. alto custo",p.procedimentoAlto);
+  html+=checkRow("f-ress","🧲 Ressonância",(p.ressonancia===true||p.ressonancia==="true"||p.ressonancia==="TRUE"));
+  html+=checkRow("f-proc","⚡ Proc. alto custo",(p.procedimentoAlto===true||p.procedimentoAlto==="true"||p.procedimentoAlto==="TRUE"));
   html+='</div>';
-  html+='<div><label>Procedimento alto custo (descrição)</label><input type="text" id="f-proc-desc" value="'+esc(p.procedimentoDescricao||'')+'" placeholder="Ex: Tomografia, AngioTC..."/></div>';
-  html+='<div><label>Evento adverso evitável</label><input type="text" id="f-ev" value="'+esc(p.eventoAdverso||"")+'" placeholder="Descreva ou deixe em branco"/></div>';
+  html+='<div><label>Procedimento alto custo (descrição)</label><input type="text" id="f-proc-desc" value="'+esc(p.procedimentoDescricao||"")+'" placeholder="Ex: Tomografia, AngioTC, Holter..."/></div>';
+  html+='<div><label>Evento adverso evitável</label><input type="text" id="f-ev" value="'+esc(isEv(p.eventoAdverso)?p.eventoAdverso:"")+'" placeholder="Descreva ou deixe em branco"/></div>';
   html+='</div></div>';
 
   html+='<div style="margin-bottom:20px;"><div class="sec-title">Prescrição Médica</div>';
   html+='<textarea id="f-presc" rows="3" placeholder="Medicações, doses, via...">'+esc(p.prescricao||"")+'</textarea></div>';
+
   html+='<div style="margin-bottom:20px;"><div class="sec-title">Observações</div>';
   html+='<textarea id="f-obs" rows="3" placeholder="Notas clínicas, intercorrências...">'+esc(p.observacoes||"")+'</textarea></div>';
 
   html+='<div style="display:flex;gap:10px;">';
   html+='<button class="btn bg" style="flex:1;" onclick="cancelarForm()">Cancelar</button>';
-  html+='<button class="btn bp" style="flex:2;" onclick="salvarForm()">✓ Salvar</button>';
+  html+='<button class="btn bp" style="flex:2;" id="btn-salvar-form" onclick="salvarForm()">✓ Salvar</button>';
   html+='</div></div>';
   el("content").innerHTML=html;
 }
@@ -545,73 +635,79 @@ function checkRow(id,label,checked){
 }
 function toggleEsp(e){
   var idx=S.formEsps.indexOf(e);
-  if(idx>=0)S.formEsps.splice(idx,1);else S.formEsps.push(e);
+  if(idx>=0) S.formEsps.splice(idx,1); else S.formEsps.push(e);
   var btn=document.getElementById("esp-"+e);
-  if(btn){var sel=S.formEsps.indexOf(e)>=0;
+  if(btn){
+    var sel=S.formEsps.indexOf(e)>=0;
     btn.style.background=sel?"var(--teal)":"white";
     btn.style.color=sel?"white":"var(--gray)";
-    btn.style.borderColor=sel?"var(--teal)":"var(--border)";}
+    btn.style.borderColor=sel?"var(--teal)":"var(--border)";
+  }
 }
 function cancelarForm(){S.editing=null;S.formEsps=[];S.tab="censo";renderTabs();renderContent();}
 function salvarForm(){
   var nome=val("f-nome").trim(),pron=val("f-pron").trim(),idade=val("f-idade").trim(),diag=val("f-diag").trim();
-  if(!nome||!pron||!idade||!diag){alert("Preencha: Nome, Prontuário, Idade e Diagnóstico principal.");return;}
+  if(!nome||!pron||!idade||!diag){alert("Preencha: Nome, Prontuário, Idade e Diagnóstico.");return;}
+  var btnSalvar=el("btn-salvar-form");
+  if(btnSalvar) btnSalvar.textContent="⏳ Salvando...";
   var form={nome:nome,prontuario:pron,idade:Number(idade),sexo:val("f-sexo"),
     dataInternamento:val("f-din"),dataAltaPrevista:val("f-dap"),dataAlta:null,
     setor:val("f-setor"),tipoInternamento:val("f-tipo-int"),
-    especialidades:S.formEsps.slice(),
-    diagnosticoPrincipal:diag,resumoClinico:val("f-resumo"),
-    pendencia:val("f-pend"),ressonancia:chk("f-ress"),procedimentoAlto:chk("f-proc"),
-    eventoAdverso:val("f-ev").trim()||"Não",prescricao:val("f-presc"),procedimentoDescricao:val("f-proc-desc"),observacoes:val("f-obs"),
+    especialidades:S.formEsps.slice(),diagnosticoPrincipal:diag,
+    resumoClinico:val("f-resumo"),pendencia:val("f-pend"),
+    ressonancia:chk("f-ress"),procedimentoAlto:chk("f-proc"),
+    procedimentoDescricao:val("f-proc-desc"),
+    eventoAdverso:val("f-ev").trim()||"Não",
+    prescricao:val("f-presc"),observacoes:val("f-obs"),
     diasUTI:0,diasTotal:0};
   if(S.editing){
-    fsUpdate("pacientes_ativos",S.editing.id,form,function(err){
-      if(err){alert("Erro: "+err);return;}
-      toast("✓ Paciente atualizado");S.editing=null;S.formEsps=[];S.tab="censo";renderTabs();loadData();
+    gsUpdate("pacientes_ativos",S.editing.id,form,function(err){
+      if(err){alert("Erro: "+err);if(btnSalvar)btnSalvar.textContent="✓ Salvar";return;}
+      toast("✓ Atualizado");S.editing=null;S.formEsps=[];S.tab="censo";renderTabs();loadData();
     });
   }else{
-    fsAdd("pacientes_ativos",form,function(err){
-      if(err){alert("Erro: "+err);return;}
+    gsAdd("pacientes_ativos",form,function(err){
+      if(err){alert("Erro: "+err);if(btnSalvar)btnSalvar.textContent="✓ Salvar";return;}
       toast("✓ Internação registrada");S.formEsps=[];S.tab="censo";renderTabs();loadData();
     });
   }
 }
 
-// ══════════════════════════════
+// ══════════════════════════════════════════
 // FORM CONCLUÍDO
-// ══════════════════════════════
+// ══════════════════════════════════════════
 function renderFormConcluido(){
   var p=S.editingConc||{};
   var isEdit=!!S.editingConc;
-  var html='<div class="card" style="padding:16px;margin-bottom:14px;border-left:4px solid '+(isEdit?"var(--teal)":"var(--green)")+';padding:16px;">';
+  var esps=(p.especialidades||[]).join(", ");
+  var html='<div class="card" style="padding:16px;margin-bottom:14px;border-left:4px solid '+(isEdit?"var(--teal)":"var(--green)")+';overflow:hidden;">';
   html+='<div style="font-weight:700;font-size:13px;color:'+(isEdit?"var(--teal)":"var(--green)")+';margin-bottom:12px;">'+(isEdit?"Editar Atendimento Concluído":"Cadastrar Atendimento Concluído")+'</div>';
-
   html+='<div style="display:flex;flex-direction:column;gap:10px;">';
-  html+='<div><label>Nome completo</label><input type="text" id="c-nome" value="'+esc(p.nome||"")+'" placeholder="Nome do paciente"/></div>';
+  html+='<div><label>Nome</label><input type="text" id="c-nome" value="'+esc(p.nome||"")+'" placeholder="Nome do paciente"/></div>';
   html+='<div class="grid3"><div><label>Prontuário</label><input type="text" id="c-pron" value="'+esc(p.prontuario||"")+'" placeholder="PRN-00000"/></div>';
   html+='<div><label>Idade</label><input type="number" id="c-idade" value="'+esc(p.idade||"")+'"/></div>';
-  html+='<div><label>Sexo</label><select id="c-sexo"><option value="F"'+((p.sexo||"F")==="F"?" selected":"")+'" >F</option><option value="M"'+( p.sexo==="M"?" selected":"")+'">M</option></select></div></div>';
+  html+='<div><label>Sexo</label><select id="c-sexo"><option value="F"'+((p.sexo||"F")==="F"?" selected":"")+'>F</option><option value="M"'+(p.sexo==="M"?" selected":"")+'>M</option></select></div></div>';
   html+='<div class="grid2"><div><label>Data internamento</label><input type="date" id="c-din" value="'+esc(p.dataInternamento||"")+'"/></div>';
-  html+='<div><label>Data da alta</label><input type="date" id="c-dalta" value="'+esc(p.dataAlta||"")+'"/></div></div>';
-  html+='<div class="grid2"><div><label>Setor predominante</label><select id="c-setor"><option value="Unidade de Internação">Unidade de Internação</option><option value="UTI">UTI</option></select></div>';
-  html+='<div><label>Dias em UTI</label><input type="number" id="c-dias-uti" value="'+esc(p.diasUTI||0)+'" placeholder="0" min="0"/></div></div>';
-  html+='<div class="grid2"><div><label>Especialidades</label><input type="text" id="c-esps" value="'+esc((p.especialidades||[]).join(", "))+'" placeholder="Ex: Cardiologia, CM"/></div>';
-  html+='<div><label>Tipo internamento</label><select id="c-tipo-int"><option value="Urgência">Urgência</option><option value="Eletivo">Eletivo</option><option value="Não informado" selected>Não informado</option></select></div></div>';
+  html+='<div><label>Data alta</label><input type="date" id="c-dalta" value="'+esc(p.dataAlta||"")+'"/></div></div>';
+  html+='<div class="grid2"><div><label>Setor</label><select id="c-setor"><option value="Unidade de Internação"'+((p.setor||"")==="Unidade de Internação"||!p.setor?" selected":"")+'>Unidade de Internação</option><option value="UTI"'+(p.setor==="UTI"?" selected":"")+'>UTI</option></select></div>';
+  html+='<div><label>Dias em UTI</label><input type="number" id="c-dias-uti" value="'+esc(p.diasUTI||0)+'" min="0"/></div></div>';
+  html+='<div class="grid2"><div><label>Especialidades</label><input type="text" id="c-esps" value="'+esc(esps)+'" placeholder="Ex: Cardiologia, CM"/></div>';
+  html+='<div><label>Tipo internamento</label><select id="c-tipo-int"><option value="Urgência"'+(p.tipoInternamento==="Urgência"?" selected":"")+'>Urgência</option><option value="Eletivo"'+(p.tipoInternamento==="Eletivo"?" selected":"")+'>Eletivo</option><option value="Não informado"'+((!p.tipoInternamento||p.tipoInternamento==="Não informado")?" selected":"")+'>Não informado</option></select></div></div>';
   html+='<div><label>Diagnóstico principal</label><input type="text" id="c-diag" value="'+esc(p.diagnosticoPrincipal||"")+'" placeholder="Ex: Insuficiência Cardíaca"/></div>';
-  html+='<div><label>Resumo clínico</label><textarea id="c-resumo" rows="2" placeholder="Comorbidades, contexto clínico..."></textarea></div>';
-  html+='<div><label>Pendência (se houve)</label><input type="text" id="c-pend" value="'+esc(p.pendencia||"")+'" placeholder="Deixe em branco se não houve"/></div>';
+  html+='<div><label>Resumo clínico</label><textarea id="c-resumo" rows="2" placeholder="Comorbidades...">'+esc(p.resumoClinico||"")+'</textarea></div>';
   html+='<div class="grid2">';
-  html+=checkRow("c-ress","🧲 Ressonância",false);
-  html+=checkRow("c-proc","⚡ Proc. alto custo",false);
+  html+=checkRow("c-ress","🧲 Ressonância",(p.ressonancia===true||p.ressonancia==="true"||p.ressonancia==="TRUE"));
+  html+=checkRow("c-proc","⚡ Proc. alto custo",(p.procedimentoAlto===true||p.procedimentoAlto==="true"||p.procedimentoAlto==="TRUE"));
   html+='</div>';
-  html+='<div><label>Evento adverso evitável</label><input type="text" id="c-ev" value="'+esc(p.eventoAdverso&&p.eventoAdverso!=="Não"?p.eventoAdverso:"")+'" placeholder="Descreva ou deixe em branco"/></div>';
-  html+='<div><label>Prescrição médica</label><textarea id="c-presc" rows="2" placeholder="Medicações, doses..."></textarea></div>';
-  html+='<div><label>Proc. alto custo (descrição)</label><input type="text" id="c-proc-desc" value="'+esc(p.procedimentoDescricao||"")+'" placeholder="Ex: Tomografia..."/></div>';
-  html+='<div><label>Observações</label><textarea id="c-obs" rows="2" placeholder="Notas..."></textarea></div>';
-  html+='<button class="btn '+(isEdit?'bp':'bs')+'" style="width:100%;" onclick="salvarConcluido()">✓ '+(isEdit?'Salvar Alterações':'Salvar Atendimento Concluído')+'</button>';
+  html+='<div><label>Descrição proc. alto custo</label><input type="text" id="c-proc-desc" value="'+esc(p.procedimentoDescricao||"")+'" placeholder="Ex: Tomografia..."/></div>';
+  html+='<div><label>Evento adverso evitável</label><input type="text" id="c-ev" value="'+esc(isEv(p.eventoAdverso)?p.eventoAdverso:"")+'" placeholder="Descreva ou deixe em branco"/></div>';
+  html+='<div><label>Prescrição médica</label><textarea id="c-presc" rows="2" placeholder="Medicações...">'+esc(p.prescricao||"")+'</textarea></div>';
+  html+='<div><label>Observações</label><textarea id="c-obs" rows="2" placeholder="Notas...">'+esc(p.observacoes||"")+'</textarea></div>';
+  html+='<button class="btn '+(isEdit?"bp":"bs")+'" style="width:100%;" onclick="salvarConcluido()">'+(isEdit?"✓ Salvar Alterações":"✓ Salvar Atendimento Concluído")+'</button>';
   html+='</div></div>';
   return html;
 }
+
 function salvarConcluido(){
   var nome=val("c-nome").trim(),pron=val("c-pron").trim(),idade=val("c-idade").trim();
   var din=val("c-din"),dalta=val("c-dalta"),diag=val("c-diag").trim();
@@ -624,29 +720,28 @@ function salvarConcluido(){
   var data={nome:nome,prontuario:pron,idade:Number(idade),sexo:val("c-sexo"),
     dataInternamento:din,dataAltaPrevista:dalta,dataAlta:dalta,
     setor:val("c-setor"),tipoInternamento:val("c-tipo-int"),
-    diasUTI:diasUTI,diasTotal:diasTotal,
-    especialidades:esps,diagnosticoPrincipal:diag,
-    resumoClinico:val("c-resumo"),pendencia:val("c-pend"),
+    diasUTI:diasUTI,diasTotal:diasTotal,especialidades:esps,
+    diagnosticoPrincipal:diag,resumoClinico:val("c-resumo"),pendencia:"",
     ressonancia:chk("c-ress"),procedimentoAlto:chk("c-proc"),
-    eventoAdverso:ev,prescricao:val("c-presc"),procedimentoDescricao:val("c-proc-desc"),observacoes:val("c-obs")};
+    procedimentoDescricao:val("c-proc-desc"),eventoAdverso:ev,
+    prescricao:val("c-presc"),observacoes:val("c-obs")};
+
   if(S.editingConc){
-    fsUpdate("pacientes_alta",S.editingConc.id,data,function(err){
+    gsUpdate("pacientes_alta",S.editingConc.id,data,function(err){
       if(err){alert("Erro: "+err);return;}
-      toast("✓ Atendimento atualizado");
-      S.novoConcluido=false;S.editingConc=null;loadData();
+      toast("✓ Atualizado");S.novoConcluido=false;S.editingConc=null;loadData();
     });
-  } else {
-    fsAdd("pacientes_alta",data,function(err){
+  }else{
+    gsAdd("pacientes_alta",data,function(err){
       if(err){alert("Erro: "+err);return;}
-      toast("✓ Atendimento concluído cadastrado");
-      S.novoConcluido=false;S.editingConc=null;loadData();
+      toast("✓ Cadastrado");S.novoConcluido=false;S.editingConc=null;loadData();
     });
   }
 }
 
-// ══════════════════════════════
+// ══════════════════════════════════════════
 // RELATÓRIO
-// ══════════════════════════════
+// ══════════════════════════════════════════
 function toggleDetalhe(k){S.detalhe=(S.detalhe===k?null:k);renderRelatorio();}
 function setRMode(m){S.rMode=m;S.detalhe=null;renderRelatorio();}
 
@@ -671,7 +766,7 @@ function renderRelatorio(){
     });
     inicioMes=cf;fimMes=ct;
     tituloRel=fmt(S.rFrom)+" a "+fmt(S.rTo);
-  } else {
+  }else{
     var mes=S.rMes,ano=S.rAno;
     inicioMes=new Date(ano,mes,1);fimMes=new Date(ano,mes+1,0,23,59,59);
     pp=all.filter(function(p){
@@ -690,6 +785,41 @@ function renderRelatorio(){
 
   pp=pp.slice().sort(function(a,b){return(a.dataInternamento||"").localeCompare(b.dataInternamento||"");});
 
+  // Diárias mensais por setor (para gráfico)
+  var diasUIPorMes={},diasUTIPorMes={};
+  var allDisch=S.discharged.slice().concat(S.active);
+  allDisch.forEach(function(p){
+    if(!p.dataInternamento)return;
+    var din=new Date(p.dataInternamento+"T12:00:00");
+    var dalt=p.dataAlta?new Date(p.dataAlta+"T12:00:00"):new Date();
+    var cur=new Date(din.getFullYear(),din.getMonth(),1);
+    while(cur<=dalt){
+      var key=cur.getFullYear()+"-"+(cur.getMonth()+1);
+      var mStart=new Date(cur.getFullYear(),cur.getMonth(),1);
+      var mEnd=new Date(cur.getFullYear(),cur.getMonth()+1,0,23,59,59);
+      var dStart=din>mStart?din:mStart;
+      var dEnd=dalt<mEnd?dalt:mEnd;
+      var dias=Math.max(0,Math.floor((dEnd-dStart)/86400000));
+      var diasU=Number(p.diasUTI)||0;
+      var diasT=Number(p.diasTotal)||diffDays(p.dataInternamento,p.dataAlta||tod());
+      var propUTI=diasT>0?diasU/diasT:0;
+      var dUTI=Math.round(dias*propUTI);
+      var dUI=dias-dUTI;
+      diasUTIPorMes[key]=(diasUTIPorMes[key]||0)+dUTI;
+      diasUIPorMes[key]=(diasUIPorMes[key]||0)+dUI;
+      cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);
+    }
+  });
+
+  // Últimos 6 meses para gráfico
+  var graficoMeses=[];
+  for(var i=5;i>=0;i--){
+    var d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    var key=d.getFullYear()+"-"+(d.getMonth()+1);
+    graficoMeses.push({key:key,label:MESES[d.getMonth()].substring(0,3)+"/"+String(d.getFullYear()).substring(2),uti:diasUTIPorMes[key]||0,ui:diasUIPorMes[key]||0});
+  }
+  var maxBar=Math.max.apply(null,graficoMeses.map(function(m){return m.uti+m.ui;}));
+
   var totalDiariasMes=0,totalDiasUTIMes=0;
   S.discharged.forEach(function(p){
     if(!p.dataInternamento||!p.dataAlta)return;
@@ -700,7 +830,7 @@ function renderRelatorio(){
     var fim=dalt>fimMes?fimMes:dalt;
     var dias=Math.max(0,Math.floor((fim-inicio)/86400000));
     totalDiariasMes+=dias;
-    if((p.diasUTI||0)>0){totalDiasUTIMes+=Math.round(dias*((p.diasUTI||0)/(p.diasTotal||1)));}
+    if(Number(p.diasUTI)>0) totalDiasUTIMes+=Math.round(dias*(Number(p.diasUTI)||0)/(Number(p.diasTotal)||1));
   });
   S.active.forEach(function(p){
     if(!p.dataInternamento)return;
@@ -709,50 +839,51 @@ function renderRelatorio(){
     var inicio=din<inicioMes?inicioMes:din;
     var dias=Math.max(0,Math.floor((fimMes-inicio)/86400000));
     totalDiariasMes+=dias;
-    if(p.setor==="UTI")totalDiasUTIMes+=dias;
+    if(p.setor==="UTI") totalDiasUTIMes+=dias;
   });
 
-  var pctUTI=totalDiariasMes>0?((totalDiasUTIMes/totalDiariasMes)*100).toFixed(1)+"%":"---";
+  var pctUTI=totalDiariasMes>0?((totalDiasUTIMes/totalDiariasMes)*100).toFixed(1)+"%":"--";
   var total=pp.length,totalAltas=pd.length;
   var espC={};
   pp.forEach(function(p){(p.especialidades||[]).forEach(function(e){espC[e]=(espC[e]||0)+1;});});
   var espTop=Object.keys(espC).map(function(e){return[e,espC[e]];}).sort(function(a,b){return b[1]-a[1];});
-  var comEv=pp.filter(function(p){var ev=(p.eventoAdverso||"").trim().toLowerCase();return ev&&ev!=="nao"&&ev!=="não"&&ev!=="0"&&ev!=="na";});
-  var comUTI=pp.filter(function(p){return(p.diasUTI||0)>0;});
-  var comRess=pp.filter(function(p){return p.ressonancia;});
-  var comProc=pp.filter(function(p){return p.procedimentoAlto;});
+  var comEv=pp.filter(function(p){return isEv(p.eventoAdverso);});
+  var comUTI=pp.filter(function(p){return Number(p.diasUTI)>0;});
+  var comRess=pp.filter(function(p){return p.ressonancia===true||p.ressonancia==="true"||p.ressonancia==="TRUE";});
+  var comProc=pp.filter(function(p){return p.procedimentoAlto===true||p.procedimentoAlto==="true"||p.procedimentoAlto==="TRUE";});
+  var comReadm=pp.filter(function(p){return(p.readmissao30dias||"").toUpperCase()==="SIM";});
 
   var html='<div class="np">';
-  html+='<div class="serif" style="font-size:20px;color:var(--navy);margin-bottom:4px;">Relatorios</div>';
-  html+='<div style="font-size:12px;color:var(--gray);margin-bottom:14px;">Hospital Rio Grande - Viver Saude</div>';
-
+  html+='<div class="serif" style="font-size:20px;color:var(--navy);margin-bottom:4px;">Relatórios</div>';
+  html+='<div style="font-size:12px;color:var(--gray);margin-bottom:14px;">Hospital Rio Grande · Viver Saúde</div>';
   var m1=S.rMode!=="custom",m2=S.rMode==="custom";
   html+='<div style="display:flex;gap:8px;margin-bottom:12px;">';
-  html+='<button onclick="setRMode(\'mes\')" style="padding:6px 14px;border-radius:999px;border:2px solid;font-size:12px;background:'+(m1?"var(--navy)":"white")+';color:'+(m1?"white":"var(--gray)")+';border-color:'+(m1?"var(--navy)":"var(--border)")+';">Por mes</button>';
-  html+='<button onclick="setRMode(\'custom\')" style="padding:6px 14px;border-radius:999px;border:2px solid;font-size:12px;background:'+(m2?"var(--navy)":"white")+';color:'+(m2?"white":"var(--gray)")+';border-color:'+(m2?"var(--navy)":"var(--border)")+';"> Periodo personalizado</button>';
+  html+='<button onclick="setRMode(\'mes\')" style="padding:6px 14px;border-radius:999px;border:2px solid;font-size:12px;background:'+(m1?"var(--navy)":"white")+';color:'+(m1?"white":"var(--gray)")+';border-color:'+(m1?"var(--navy)":"var(--border)")+';">Por mês</button>';
+  html+='<button onclick="setRMode(\'custom\')" style="padding:6px 14px;border-radius:999px;border:2px solid;font-size:12px;background:'+(m2?"var(--navy)":"white")+';color:'+(m2?"white":"var(--gray)")+';border-color:'+(m2?"var(--navy)":"var(--border)")+';"> Personalizado</button>';
   html+='</div>';
-
   if(!m2){
     html+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">';
     html+='<button onclick="navMes(-1)" style="padding:8px 14px;border-radius:8px;border:2px solid var(--border);background:white;font-size:16px;cursor:pointer;">&#8249;</button>';
     html+='<div style="flex:1;text-align:center;font-weight:700;font-size:16px;color:var(--navy);">'+MESES[S.rMes]+' '+S.rAno+'</div>';
     html+='<button onclick="navMes(1)" style="padding:8px 14px;border-radius:8px;border:2px solid var(--border);background:white;font-size:16px;cursor:pointer;">&#8250;</button>';
     html+='</div>';
-  } else {
+  }else{
     html+='<div class="grid2" style="margin-bottom:12px;">';
     html+='<div><label>De</label><input type="date" value="'+esc(S.rFrom)+'" onchange="S.rFrom=this.value;S.detalhe=null;renderRelatorio();"/></div>';
-    html+='<div><label>Ate</label><input type="date" value="'+esc(S.rTo)+'" onchange="S.rTo=this.value;S.detalhe=null;renderRelatorio();"/></div>';
+    html+='<div><label>Até</label><input type="date" value="'+esc(S.rTo)+'" onchange="S.rTo=this.value;S.detalhe=null;renderRelatorio();"/></div>';
     html+='</div>';
   }
-  html+='<button class="btn bp" style="width:100%;margin-bottom:20px;" onclick="window.print()">Gerar Relatorio</button>';
+  html+='<button class="btn bp" style="width:100%;margin-bottom:20px;" onclick="window.print()">🖨 Gerar / Imprimir</button>';
   html+='</div>';
 
+  // Cabeçalho imprimível
   html+='<div style="text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--teal);">';
-  html+='<div class="serif" style="font-size:20px;color:var(--navy);">Viver Saude - Hospital Rio Grande</div>';
-  html+='<div style="font-size:13px;color:var(--gray);margin-top:4px;">Relatorio de Governanca Clinica</div>';
-  html+='<div style="font-size:12px;color:var(--gray);margin-top:2px;">'+tituloRel+' - Gerado em '+fmt(tod())+'</div>';
+  html+='<div class="serif" style="font-size:20px;color:var(--navy);">Viver Saúde · Hospital Rio Grande</div>';
+  html+='<div style="font-size:13px;color:var(--gray);margin-top:4px;">Relatório de Governança Clínica</div>';
+  html+='<div style="font-size:12px;color:var(--gray);margin-top:2px;">'+tituloRel+' · Gerado em '+fmt(tod())+'</div>';
   html+='</div>';
 
+  // KPIs clicáveis
   function mkKpi(label,value,color,key){
     var active=S.detalhe===key;
     var h='<div class="card kpi-card" onclick="toggleDetalhe(\''+key+'\')" style="cursor:pointer;border:2px solid '+(active?"var(--teal)":"transparent")+';">';
@@ -764,20 +895,22 @@ function renderRelatorio(){
   }
 
   html+='<div class="grid2" style="margin-bottom:12px;">';
-  html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--teal);">'+total+'</div><div class="kpi-lbl">Internacoes no periodo</div></div>';
-  html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--green);">'+totalAltas+'</div><div class="kpi-lbl">Altas no periodo</div></div>';
-  html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--navy);">'+totalDiariasMes+'</div><div class="kpi-lbl">Diarias totais</div></div>';
-  html+=mkKpi("Diarias UTI",totalDiasUTIMes,"var(--red)","uti");
-  html+=mkKpi("% diarias UTI",pctUTI,"var(--red)","pctuti");
+  html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--teal);">'+total+'</div><div class="kpi-lbl">Internações</div></div>';
+  html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--green);">'+totalAltas+'</div><div class="kpi-lbl">Altas</div></div>';
+  html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--navy);">'+totalDiariasMes+'</div><div class="kpi-lbl">Diárias totais</div></div>';
+  html+=mkKpi("Diárias UTI",totalDiasUTIMes,"var(--red)","uti");
+  html+=mkKpi("% diárias UTI",pctUTI,"var(--red)","pctuti");
   html+=mkKpi("Eventos adversos",comEv.length,"var(--amber)","ev");
-  html+=mkKpi("Com ressonancia",comRess.length,"#9a3412","ress");
+  html+=mkKpi("Ressonâncias",comRess.length,"#9a3412","ress");
   html+=mkKpi("Proc. alto custo",comProc.length,"#9a3412","proc");
+  html+=mkKpi("Readmissões 30d",comReadm.length,"var(--red)","readm");
   html+='</div>';
 
+  // Painéis de detalhe
   function detalheBox(titulo,itens){
     var h='<div class="card" style="padding:16px;margin-bottom:12px;border-left:4px solid var(--teal);">';
     h+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:10px;">'+titulo+'</div>';
-    if(!itens.length) h+='<div style="color:var(--gray);font-size:13px;">Nenhum registro neste periodo.</div>';
+    if(!itens.length) h+='<div style="color:var(--gray);font-size:13px;">Nenhum registro neste período.</div>';
     itens.forEach(function(i){h+=i;});
     h+='</div>';
     return h;
@@ -787,68 +920,100 @@ function renderRelatorio(){
   }
 
   if(S.detalhe==="uti"||S.detalhe==="pctuti"){
-    html+=detalheBox("Pacientes com Diarias de UTI ("+comUTI.length+")",
-      comUTI.map(function(p){return dRow2(p.nome,(p.diasUTI||0)+"d UTI / "+(p.diasTotal||0)+"d total ("+(p.diasTotal>0?((p.diasUTI||0)/p.diasTotal*100).toFixed(0):0)+"%)");}));
+    html+=detalheBox("Pacientes com Diárias de UTI ("+comUTI.length+")",
+      comUTI.map(function(p){return dRow2(p.nome,(Number(p.diasUTI)||0)+"d UTI / "+(Number(p.diasTotal)||0)+"d total ("+(Number(p.diasTotal)>0?((Number(p.diasUTI)||0)/Number(p.diasTotal)*100).toFixed(0):0)+"%)");})
+    );
   }
   if(S.detalhe==="ev"){
-    html+=detalheBox("Eventos Adversos Evitaveis ("+comEv.length+")",
-      comEv.map(function(p){
-        return'<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><div style="font-weight:600;color:var(--navy);">'+esc(p.nome)+'</div><div style="color:var(--red);margin-top:2px;">'+esc(p.eventoAdverso)+'</div></div>';
-      }));
+    html+=detalheBox("Eventos Adversos Evitáveis ("+comEv.length+")",
+      comEv.map(function(p){return'<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><div style="font-weight:600;color:var(--navy);">'+esc(p.nome)+'</div><div style="color:var(--red);margin-top:2px;">'+esc(p.eventoAdverso)+'</div></div>';})
+    );
   }
   if(S.detalhe==="ress"){
-    html+=detalheBox("Pacientes com Ressonancia ("+comRess.length+")",
-      comRess.map(function(p){return dRow2(p.nome,p.prontuario);}));
+    html+=detalheBox("Pacientes com Ressonância ("+comRess.length+")",
+      comRess.map(function(p){return dRow2(p.nome,esc(p.prontuario));})
+    );
   }
   if(S.detalhe==="proc"){
     html+=detalheBox("Procedimentos de Alto Custo ("+comProc.length+")",
-      comProc.map(function(p){
-        return'<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><div style="font-weight:600;color:var(--navy);">'+esc(p.nome)+'</div><div style="color:var(--gray);margin-top:2px;">'+esc(p.procedimentoDescricao||"Sem descricao")+'</div></div>';
-      }));
+      comProc.map(function(p){return'<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><div style="font-weight:600;color:var(--navy);">'+esc(p.nome)+'</div><div style="color:var(--gray);margin-top:2px;">'+esc(p.procedimentoDescricao||"Sem descrição")+'</div></div>';})
+    );
+  }
+  if(S.detalhe==="readm"){
+    html+=detalheBox("Readmissões em 30 dias ("+comReadm.length+")",
+      comReadm.map(function(p){return dRow2(p.nome,fmt(p.dataInternamento));})
+    );
   }
 
+  // Gráfico UTI vs UI últimos 6 meses
+  html+='<div class="card" style="padding:16px;margin-bottom:12px;">';
+  html+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:16px;">Evolução Diárias UTI vs UI — Últimos 6 meses</div>';
+  html+='<div style="display:flex;align-items:flex-end;gap:8px;height:120px;">';
+  graficoMeses.forEach(function(m){
+    var total=m.uti+m.ui;
+    var hUTI=maxBar>0?Math.round((m.uti/maxBar)*100):0;
+    var hUI=maxBar>0?Math.round((m.ui/maxBar)*100):0;
+    html+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">';
+    html+='<div style="font-size:9px;color:var(--gray);margin-bottom:2px;">'+total+'</div>';
+    html+='<div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;gap:1px;">';
+    if(hUTI>0) html+='<div style="height:'+hUTI+'px;background:var(--red);border-radius:3px 3px 0 0;opacity:.85;" title="UTI: '+m.uti+'d"></div>';
+    if(hUI>0)  html+='<div style="height:'+hUI+'px;background:var(--teal);border-radius:'+(hUTI>0?"0":"3px 3px")+'0 0;opacity:.85;" title="UI: '+m.ui+'d"></div>';
+    html+='</div>';
+    html+='<div style="font-size:9px;color:var(--gray);margin-top:4px;text-align:center;">'+m.label+'</div>';
+    html+='</div>';
+  });
+  html+='</div>';
+  html+='<div style="display:flex;gap:16px;margin-top:8px;">';
+  html+='<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gray);"><span style="width:12px;height:12px;background:var(--red);border-radius:2px;display:inline-block;"></span>UTI</div>';
+  html+='<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gray);"><span style="width:12px;height:12px;background:var(--teal);border-radius:2px;display:inline-block;"></span>Unidade de Internação</div>';
+  html+='</div></div>';
+
+  // Especialidades
   if(espTop.length>0){
-    html+='<div class="card" style="padding:16px;margin-bottom:12px;"><div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;">Distribuicao por Especialidade</div>';
+    html+='<div class="card" style="padding:16px;margin-bottom:12px;"><div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;">Distribuição por Especialidade</div>';
     espTop.forEach(function(e){
-      html+='<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span style="color:var(--navy);font-weight:500;">'+esc(e[0])+'</span><span style="color:var(--gray);">'+e[1]+' pac. ('+(total?Math.round(e[1]/total*100):0)+'%)</span></div>';
+      html+='<div style="margin-bottom:8px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span style="color:var(--navy);font-weight:500;">'+esc(e[0])+'</span><span style="color:var(--gray);">'+e[1]+' ('+( total?Math.round(e[1]/total*100):0)+'%)</span></div>';
       html+='<div class="bar-bg"><div class="bar-fill" style="width:'+(total?(e[1]/total)*100:0)+'%;"></div></div></div>';
     });
     html+='</div>';
   }
 
+  // Tabela
   html+='<div class="card" style="padding:16px;overflow-x:auto;margin-bottom:12px;">';
-  html+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:10px;">Pacientes no Periodo ('+total+') - por data internamento</div>';
+  html+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:10px;">Pacientes ('+total+') — por internamento</div>';
   if(total===0){
-    html+='<div style="color:var(--gray);font-size:13px;text-align:center;padding:24px;">Nenhum paciente neste periodo.</div>';
-  } else {
+    html+='<div style="color:var(--gray);font-size:13px;text-align:center;padding:24px;">Nenhum paciente neste período.</div>';
+  }else{
     html+='<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr style="background:var(--surface);">';
-    ["Internamento","Prontuario","Nome","Setor","Alta","Dias","UTI","% UTI","Diagnostico","EV","Ress","PAC"].forEach(function(h){
-      html+='<th style="padding:6px 8px;text-align:left;color:var(--gray);font-weight:700;border-bottom:2px solid var(--border);white-space:nowrap;">'+h+'</th>';
+    ["Intern.","Prontuário","Nome","Setor","Alta","Dias","UTI","% UTI","Diagnóstico","EV","Ress","PAC","Readm"].forEach(function(h){
+      html+='<th style="padding:5px 7px;text-align:left;color:var(--gray);font-weight:700;border-bottom:2px solid var(--border);white-space:nowrap;">'+h+'</th>';
     });
     html+='</tr></thead><tbody>';
     pp.forEach(function(p){
-      var diasT=p.diasTotal||0;
-      var diasU=p.diasUTI||0;
-      var pct=diasT>0?(diasU/diasT*100).toFixed(0)+"%" : (p.dataAlta?"0%":"---");
+      var diasT=Number(p.diasTotal)||0;
+      var diasU=Number(p.diasUTI)||0;
+      var pct=diasT>0?(diasU/diasT*100).toFixed(0)+"%" : (p.dataAlta?"0%":"--");
+      var isR=(p.readmissao30dias||"").toUpperCase()==="SIM";
       html+='<tr style="border-bottom:1px solid var(--border);">';
-      html+='<td style="padding:5px 8px;white-space:nowrap;">'+fmt(p.dataInternamento)+'</td>';
-      html+='<td style="padding:5px 8px;color:var(--gray);">'+esc(p.prontuario)+'</td>';
-      html+='<td style="padding:5px 8px;font-weight:500;white-space:nowrap;">'+esc(p.nome)+'</td>';
-      html+='<td style="padding:5px 8px;">'+(p.dataAlta?'<span class="badge b-alta">Alta</span>':'<span class="badge '+(p.setor==="UTI"?"b-uti":"b-ui")+'">'+esc(p.setor||"UI")+'</span>')+'</td>';
-      html+='<td style="padding:5px 8px;white-space:nowrap;">'+fmt(p.dataAlta)+'</td>';
-      html+='<td style="padding:5px 8px;">'+diasT+'</td>';
-      html+='<td style="padding:5px 8px;">'+diasU+'</td>';
-      html+='<td style="padding:5px 8px;">'+pct+'</td>';
-      html+='<td style="padding:5px 8px;">'+esc(p.diagnosticoPrincipal)+'</td>';
-      html+='<td style="padding:5px 8px;">'+(p.eventoAdverso&&p.eventoAdverso!=="Nao"?'<span class="badge b-ev">!</span>':'---')+'</td>';
-      html+='<td style="padding:5px 8px;">'+(p.ressonancia?'S':'---')+'</td>';
-      html+='<td style="padding:5px 8px;">'+(p.procedimentoAlto?'S':'---')+'</td>';
+      html+='<td style="padding:5px 7px;white-space:nowrap;">'+fmt(p.dataInternamento)+'</td>';
+      html+='<td style="padding:5px 7px;color:var(--gray);">'+esc(p.prontuario)+'</td>';
+      html+='<td style="padding:5px 7px;font-weight:500;white-space:nowrap;">'+esc(p.nome)+'</td>';
+      html+='<td style="padding:5px 7px;">'+(p.dataAlta?'<span class="badge b-alta">Alta</span>':'<span class="badge '+(p.setor==="UTI"?"b-uti":"b-ui")+'">'+esc(p.setor||"UI")+'</span>')+'</td>';
+      html+='<td style="padding:5px 7px;white-space:nowrap;">'+fmt(p.dataAlta)+'</td>';
+      html+='<td style="padding:5px 7px;">'+diasT+'</td>';
+      html+='<td style="padding:5px 7px;">'+diasU+'</td>';
+      html+='<td style="padding:5px 7px;">'+pct+'</td>';
+      html+='<td style="padding:5px 7px;">'+esc(p.diagnosticoPrincipal)+'</td>';
+      html+='<td style="padding:5px 7px;">'+(isEv(p.eventoAdverso)?'<span class="badge b-ev">!</span>':'--')+'</td>';
+      html+='<td style="padding:5px 7px;">'+(p.ressonancia===true||p.ressonancia==="true"||p.ressonancia==="TRUE"?'S':'--')+'</td>';
+      html+='<td style="padding:5px 7px;">'+(p.procedimentoAlto===true||p.procedimentoAlto==="true"||p.procedimentoAlto==="TRUE"?'S':'--')+'</td>';
+      html+='<td style="padding:5px 7px;">'+(isR?'<span class="badge b-readm">SIM</span>':'--')+'</td>';
       html+='</tr>';
     });
     html+='</tbody></table>';
   }
   html+='</div>';
-  html+='<div style="font-size:11px;color:var(--gray);text-align:center;">Viver Saude - Hospital Rio Grande - '+fmt(tod())+'</div>';
+  html+='<div style="font-size:11px;color:var(--gray);text-align:center;">Viver Saúde · Hospital Rio Grande · '+fmt(tod())+'</div>';
   el("content").innerHTML=html;
 }
 function navMes(dir){
@@ -858,50 +1023,14 @@ function navMes(dir){
 }
 
 function showErro(msg){
-  el("content").innerHTML='<div style="margin:16px;padding:14px;background:#fdecea;border-radius:10px;color:var(--red);font-size:13px;">⚠ '+esc(msg)+'<button class="btn bd sm" onclick="loadData()" style="margin-left:8px;">Tentar novamente</button></div>';
+  el("content").innerHTML='<div style="margin:0;padding:14px;background:#fdecea;border-radius:10px;color:var(--red);font-size:13px;">⚠ '+esc(String(msg))+'<button class="btn bd sm" onclick="loadData()" style="margin-left:8px;">Tentar novamente</button></div>';
 }
 
-
-// ══════════════════════════════
-// RESTAURAR / APAGAR CONCLUÍDO
-// ══════════════════════════════
-function editarConcluido(id){
-  var p=S.discharged.filter(function(x){return x.id===id;})[0];
-  if(!p)return;
-  S.editingConc=Object.assign({},p,{especialidades:(p.especialidades||[]).slice()});
-  S.formEsps=S.editingConc.especialidades.slice();
-  S.subTab="concluidos";
-  S.novoConcluido=true;
-  renderCenso();
-}
-function restaurarPaciente(id){
-  if(!confirm("Retornar ao censo de internados?"))return;
-  var p=S.discharged.filter(function(x){return x.id===id;})[0];
-  if(!p)return;
-  var data=Object.assign({},p,{dataAlta:null,diasUTI:0,diasTotal:0});
-  delete data.id;
-  fsAdd("pacientes_ativos",data,function(err){
-    if(err){alert("Erro: "+err);return;}
-    fsDel("pacientes_alta",id,function(err2){
-      if(err2){alert("Erro: "+err2);return;}
-      toast("Paciente retornado ao censo");loadData();
-    });
-  });
-}
-function apagarConcluido(id){
-  if(!confirm("Apagar permanentemente este registro?"))return;
-  fsDel("pacientes_alta",id,function(err){
-    if(err){alert("Erro: "+err);return;}
-    toast("Registro apagado");loadData();
-  });
-}
-
-// ══════════════════════════════
+// ══════════════════════════════════════════
 // LOGIN
-// ══════════════════════════════
+// ══════════════════════════════════════════
 function tentarLogin(){
-  var u=el("campo-usuario").value;
-  var p=el("campo-senha").value;
+  var u=el("campo-usuario").value, p=el("campo-senha").value;
   var f=USERS.filter(function(x){return x.user===u&&x.pass===p;})[0];
   if(f){
     S.session=f;
