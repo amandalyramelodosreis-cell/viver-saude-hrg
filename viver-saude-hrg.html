@@ -276,7 +276,7 @@ function updateHeaderSub(txt){
 function renderTabs(){
   var isMod=S.session&&S.session.role==="moderadora";
   var tabs=[{k:"censo",l:"📋 Censo"},{k:"diario",l:"📱 Diário"}];
-  if(isMod) tabs.push({k:"novo",l:"+ Internação"});
+  tabs.push({k:"novo",l:"+ Internação"});
   tabs.push({k:"relatorio",l:"📊 Relatórios"});
   var html=tabs.map(function(t){
     var a=S.tab===t.k;
@@ -729,6 +729,7 @@ function renderFormConcluido(){
   html+=checkRow("c-proc","⚡ Proc. alto custo",(p.procedimentoAlto===true||p.procedimentoAlto==="true"||p.procedimentoAlto==="TRUE"));
   html+='</div>';
   html+='<div><label>Descrição proc. alto custo</label><input type="text" id="c-proc-desc" value="'+esc(p.procedimentoDescricao||"")+'" placeholder="Ex: Tomografia..."/></div>';
+  html+='<div><label>Readmissão em 30 dias</label><select id="c-readm"><option value="NA"'+((p.readmissao30dias==="NA"||!p.readmissao30dias)?" selected":"")+'>Não avaliado</option><option value="SIM"'+(p.readmissao30dias==="SIM"?" selected":"")+'>Sim</option><option value="NÃO"'+(p.readmissao30dias==="NÃO"?" selected":"")+'>Não</option></select></div>';
   html+='<div><label>Evento adverso evitável</label><input type="text" id="c-ev" value="'+esc(isEv(p.eventoAdverso)?p.eventoAdverso:"")+'" placeholder="Descreva ou deixe em branco"/></div>';
   html+='<div><label>Prescrição médica</label><textarea id="c-presc" rows="2" placeholder="Medicações...">'+esc(p.prescricao||"")+'</textarea></div>';
   html+='<div><label>Observações</label><textarea id="c-obs" rows="2" placeholder="Notas...">'+esc(p.observacoes||"")+'</textarea></div>';
@@ -753,6 +754,7 @@ function salvarConcluido(){
     diagnosticoPrincipal:diag,resumoClinico:val("c-resumo"),pendencia:"",
     ressonancia:chk("c-ress"),procedimentoAlto:chk("c-proc"),
     procedimentoDescricao:val("c-proc-desc"),eventoAdverso:ev,
+    readmissao30dias:val("c-readm")||"NA",
     prescricao:val("c-presc"),observacoes:val("c-obs")};
 
   if(S.editingConc){
