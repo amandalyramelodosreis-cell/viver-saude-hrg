@@ -192,8 +192,16 @@ var S = {
 // UTILS
 // ══════════════════════════════════════════
 function tod(){ return new Date().toISOString().split("T")[0]; }
-function fmt(d){ return d ? new Date(d+"T12:00:00").toLocaleDateString("pt-BR") : "—"; }
-function diffDays(a,b){ return Math.max(0,Math.floor((new Date((b||tod())+"T12:00:00")-new Date(a+"T12:00:00"))/86400000)); }
+function toISO(d){
+  if(!d) return "";
+  if(d instanceof Date) return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  var s=String(d);
+  // "Thu Dec 18 2025 00:00:00 GMT-0300..." → parse
+  if(s.length>10&&s.indexOf("-")!==4){var dt=new Date(s);if(!isNaN(dt))return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
+  return s.substring(0,10);
+}
+function fmt(d){ if(!d) return "—"; var s=toISO(d); if(!s) return "—"; return new Date(s+"T12:00:00").toLocaleDateString("pt-BR"); }
+function diffDays(a,b){ var aa=toISO(a)||tod(); var bb=toISO(b)||tod(); return Math.max(0,Math.floor((new Date(bb+"T12:00:00")-new Date(aa+"T12:00:00"))/86400000)); }
 function esc(s){ return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function toast(msg,clr){ var t=document.getElementById("toast"); t.textContent=msg; t.style.background=clr||"var(--green)"; t.classList.remove("hidden"); setTimeout(function(){t.classList.add("hidden");},2800); }
 function el(id){ return document.getElementById(id); }
@@ -220,10 +228,16 @@ function loadData(){
   updateHeaderSub("sincronizando...");
   gsGet("pacientes_ativos",function(err,data){
     if(err){ showErro(err); return; }
-    S.active = data||[];
+    S.active = (data||[]).map(function(p){
+    ["dataInternamento","dataAlta","dataAltaPrevista"].forEach(function(k){if(p[k]) p[k]=toISO(p[k]);});
+    return p;
+  });
     gsGet("pacientes_alta",function(err2,data2){
       if(err2){ showErro(err2); return; }
-      S.discharged = data2||[];
+      S.discharged = (data2||[]).map(function(p){
+    ["dataInternamento","dataAlta","dataAltaPrevista"].forEach(function(k){if(p[k]) p[k]=toISO(p[k]);});
+    return p;
+  });
       updateStats();
       renderContent();
       updateHeaderSub("● ao vivo");
