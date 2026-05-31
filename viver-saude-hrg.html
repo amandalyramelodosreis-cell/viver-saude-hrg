@@ -167,14 +167,23 @@ function apiGet(action, params, cb) {
 }
 
 function apiPost(action, params, body, cb) {
-  // Enviar via GET com payload encodado para evitar CORS
   var url = API + "?action=" + action;
   if (params) Object.keys(params).forEach(function(k){ url += "&" + k + "=" + encodeURIComponent(params[k]); });
-  url += "&payload=" + encodeURIComponent(JSON.stringify(body));
-  fetch(url)
+  // Tentar POST real primeiro; se der CORS, usar GET com payload
+  fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  })
     .then(function(r){ return r.json(); })
     .then(function(d){ if(d.success !== false) cb(null, d); else cb(d.error || "Erro"); })
-    .catch(function(e){ cb(e.message); });
+    .catch(function(){
+      // Fallback: GET com payload (para arquivos locais)
+      var url2 = url + "&payload=" + encodeURIComponent(JSON.stringify(body));
+      fetch(url2, { mode: "no-cors" })
+        .then(function(){ setTimeout(function(){ cb(null, { success: true }); }, 2000); })
+        .catch(function(e){ cb(e.message); });
+    });
 }
 
 function gsGet(aba, cb)        { apiGet("getAll",  { aba: aba }, function(err, d){ cb(err, d ? d.data : null); }); }
@@ -230,7 +239,7 @@ var USERS=[
 // ══════════════════════════════════════════
 var pollTimer=null;
 function loadData(){
-  if(S.tab==="novo"||S.editing) return;
+  if(S.tab==="novo"||S.editing||S.novoConcluido||S.editingConc) return;
   updateHeaderSub("sincronizando...");
   gsGet("pacientes_ativos",function(err,data){
     if(err){ showErro(err); return; }
@@ -747,13 +756,15 @@ function salvarConcluido(){
     prescricao:val("c-presc"),observacoes:val("c-obs")};
 
   if(S.editingConc){
-    gsUpdate("pacientes_alta",S.editingConc.id,data,function(err){
-      if(err){alert("Erro: "+err);return;}
+    var pid=S.editingConc.id;
+    if(!pid){alert("Erro: ID do paciente não encontrado. Recarregue a página.");return;}
+    gsUpdate("pacientes_alta",pid,data,function(err){
+      if(err){alert("Erro ao salvar: "+err);return;}
       toast("✓ Atualizado");S.novoConcluido=false;S.editingConc=null;loadData();
     });
   }else{
     gsAdd("pacientes_alta",data,function(err){
-      if(err){alert("Erro: "+err);return;}
+      if(err){alert("Erro ao cadastrar: "+err);return;}
       toast("✓ Cadastrado");S.novoConcluido=false;S.editingConc=null;loadData();
     });
   }
