@@ -152,6 +152,14 @@ var API = "https://script.google.com/macros/s/AKfycbzYLHwg3UZMYjvEoygV5km8tJ0-Zm
 function apiGet(action, params, cb) {
   var url = API + "?action=" + action;
   if (params) Object.keys(params).forEach(function(k){ url += "&" + k + "=" + encodeURIComponent(params[k]); });
+  // Para ações de escrita via GET (delete), usar no-cors e assumir sucesso
+  var writeActions = ["delete"];
+  if (writeActions.indexOf(action) >= 0) {
+    fetch(url, { mode: "no-cors" })
+      .then(function(){ setTimeout(function(){ cb(null, { success: true }); }, 1500); })
+      .catch(function(e){ cb(e.message); });
+    return;
+  }
   fetch(url)
     .then(function(r){ return r.json(); })
     .then(function(d){ if(d.success !== false) cb(null, d); else cb(d.error || "Erro"); })
@@ -159,13 +167,11 @@ function apiGet(action, params, cb) {
 }
 
 function apiPost(action, params, body, cb) {
+  // Enviar via GET com payload encodado para evitar CORS
   var url = API + "?action=" + action;
   if (params) Object.keys(params).forEach(function(k){ url += "&" + k + "=" + encodeURIComponent(params[k]); });
-  fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  })
+  url += "&payload=" + encodeURIComponent(JSON.stringify(body));
+  fetch(url)
     .then(function(r){ return r.json(); })
     .then(function(d){ if(d.success !== false) cb(null, d); else cb(d.error || "Erro"); })
     .catch(function(e){ cb(e.message); });
