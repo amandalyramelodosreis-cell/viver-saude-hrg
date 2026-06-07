@@ -149,46 +149,40 @@ button{font-family:'DM Sans',Arial,sans-serif;cursor:pointer;border:none;
 // ══════════════════════════════════════════
 var API = "https://script.google.com/macros/s/AKfycbzYLHwg3UZMYjvEoygV5km8tJ0-ZmaUmLJd_VGnPmSGc_nLF53kmSJRAzQ08mAkxH91uA/exec";
 
-function apiGet(action, params, cb) {
+// ── Camada de API ─────────────────────────────────────────────
+// O Apps Script não aceita POST cross-origin do GitHub Pages.
+// Solução: todas as operações usam GET com payload na URL.
+// O Apps Script aceita GET de qualquer origem sem restrição CORS.
+
+function apiCall(action, params, body, cb) {
   var url = API + "?action=" + action;
-  if (params) Object.keys(params).forEach(function(k){ url += "&" + k + "=" + encodeURIComponent(params[k]); });
-  // Para ações de escrita via GET (delete), usar no-cors e assumir sucesso
-  var writeActions = ["delete"];
-  if (writeActions.indexOf(action) >= 0) {
+  if (params) Object.keys(params).forEach(function(k){
+    url += "&" + k + "=" + encodeURIComponent(params[k]);
+  });
+  if (body) url += "&payload=" + encodeURIComponent(JSON.stringify(body));
+
+  // Operações de escrita sem retorno: usar no-cors (delete)
+  if (action === "delete") {
     fetch(url, { mode: "no-cors" })
-      .then(function(){ setTimeout(function(){ cb(null, { success: true }); }, 1500); })
+      .then(function(){ setTimeout(function(){ cb(null, { success: true }); }, 1200); })
       .catch(function(e){ cb(e.message); });
     return;
   }
+
+  // Todas as outras operações: GET normal com resposta JSON
   fetch(url)
     .then(function(r){ return r.json(); })
-    .then(function(d){ if(d.success !== false) cb(null, d); else cb(d.error || "Erro"); })
-    .catch(function(e){ cb(e.message); });
-}
-
-function apiPost(action, params, body, cb) {
-  var url = API + "?action=" + action;
-  if (params) Object.keys(params).forEach(function(k){ url += "&" + k + "=" + encodeURIComponent(params[k]); });
-  fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  })
-    .then(function(r){
-      if(!r.ok) throw new Error("HTTP "+r.status);
-      return r.json();
-    })
     .then(function(d){
       if(d && d.success !== false) cb(null, d);
-      else cb((d && d.error) || "Erro desconhecido");
+      else cb((d && d.error) || "Erro no servidor");
     })
     .catch(function(e){ cb("Falha na requisição: " + e.message); });
 }
 
-function gsGet(aba, cb)        { apiGet("getAll",  { aba: aba }, function(err, d){ cb(err, d ? d.data : null); }); }
-function gsAdd(aba, obj, cb)   { apiPost("add",    { aba: aba }, obj, function(err, d){ cb(err, d ? d.data : null); }); }
-function gsUpdate(aba, id, obj, cb){ apiPost("update", { aba: aba, id: id }, obj, function(err, d){ cb(err, d ? d.data : null); }); }
-function gsDel(aba, id, cb)    { apiGet("delete",  { aba: aba, id: id }, function(err){ cb(err); }); }
+function gsGet(aba, cb)           { apiCall("getAll",  { aba: aba }, null,      function(err, d){ cb(err, d ? d.data : null); }); }
+function gsAdd(aba, obj, cb)      { apiCall("add",     { aba: aba }, obj,       function(err, d){ cb(err, d ? d.data : null); }); }
+function gsUpdate(aba, id, obj, cb){ apiCall("update", { aba: aba, id: id }, obj, function(err, d){ cb(err, d ? d.data : null); }); }
+function gsDel(aba, id, cb)       { apiCall("delete",  { aba: aba, id: id }, null, function(err){ cb(err); }); }
 
 // ══════════════════════════════════════════
 // STATE
