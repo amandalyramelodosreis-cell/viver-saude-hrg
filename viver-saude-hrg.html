@@ -500,7 +500,7 @@ function renderCard(p,discharged,isMod){
   html+='<div style="padding:12px 14px;" onclick="toggleCard(\''+p.id+'\')">';
   html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">';
   html+='<div style="flex:1;"><div style="font-weight:600;font-size:14px;color:var(--navy);">'+esc(p.nome)+'</div>';
-  html+='<div style="font-size:12px;color:var(--gray);margin-top:2px;">'+esc(p.prontuario)+' · '+esc(p.idade)+'a · '+esc(p.sexo)+'</div></div>';
+  html+='<div style="font-size:12px;color:var(--gray);margin-top:2px;">'+esc(p.prontuario)+' · '+esc(p.idade)+'a · '+esc(p.sexo)+(p.leito&&!discharged?' · <span style="background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:4px;font-weight:700;font-size:11px;">🛏 '+esc(p.leito)+'</span>':'')+' </div></div>';
   html+='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">';
   if(discharged) html+='<span class="badge b-alta">✓ Alta '+fmt(p.dataAlta)+'</span>';
   else html+='<span class="badge '+(p.setor==="UTI"?"b-uti":"b-ui")+'">'+esc(p.setor||"UI")+'</span>';
@@ -520,6 +520,7 @@ function renderCard(p,discharged,isMod){
 
   if(open){
     html+='<div style="border-top:1px solid var(--border);padding:12px 14px;background:var(--surface);">';
+    if(p.leito&&!discharged) html+=dr("Leito",p.leito);
     html+=dr("Especialidade(s)",(p.especialidades||[]).join(", ")||"—");
     html+=dr("Internamento",fmt(p.dataInternamento));
     html+=dr("Tipo",p.tipoInternamento||"—");
