@@ -154,14 +154,46 @@ var API = "https://script.google.com/macros/s/AKfycbzYLHwg3UZMYjvEoygV5km8tJ0-Zm
 // Solução: todas as operações usam GET com payload na URL.
 // O Apps Script aceita GET de qualquer origem sem restrição CORS.
 
+function sanitizeObj(obj) {
+  // Remove caracteres inválidos para URI em todos os campos string
+  if (!obj || typeof obj !== "object") return obj;
+  var out = {};
+  Object.keys(obj).forEach(function(k) {
+    var v = obj[k];
+    if (typeof v === "string") {
+      // Remove surrogate pairs e caracteres de controle problemáticos
+      v = v.replace(/[\uD800-\uDFFF]/g, "")
+            .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
+    } else if (Array.isArray(v)) {
+      v = v.map(function(x){ return typeof x === "string" ? x.replace(/[\uD800-\uDFFF]/g,"") : x; });
+    }
+    out[k] = v;
+  });
+  return out;
+}
+
+function safeEncode(obj) {
+  try {
+    return encodeURIComponent(JSON.stringify(obj));
+  } catch(e) {
+    // Fallback: sanitizar e tentar de novo
+    var clean = sanitizeObj(obj);
+    try {
+      return encodeURIComponent(JSON.stringify(clean));
+    } catch(e2) {
+      return encodeURIComponent("{}");
+    }
+  }
+}
+
 function apiCall(action, params, body, cb) {
   var url = API + "?action=" + action;
   if (params) Object.keys(params).forEach(function(k){
-    url += "&" + k + "=" + encodeURIComponent(params[k]);
+    url += "&" + k + "=" + encodeURIComponent(String(params[k]||""));
   });
-  if (body) url += "&payload=" + encodeURIComponent(JSON.stringify(body));
+  if (body) url += "&payload=" + safeEncode(sanitizeObj(body));
 
-  // Operações de escrita sem retorno: usar no-cors (delete)
+  // Delete: no-cors sem retorno
   if (action === "delete") {
     fetch(url, { mode: "no-cors" })
       .then(function(){ setTimeout(function(){ cb(null, { success: true }); }, 1200); })
@@ -169,7 +201,7 @@ function apiCall(action, params, body, cb) {
     return;
   }
 
-  // Todas as outras operações: GET normal com resposta JSON
+  // Demais operações: GET com resposta JSON
   fetch(url)
     .then(function(r){ return r.json(); })
     .then(function(d){
