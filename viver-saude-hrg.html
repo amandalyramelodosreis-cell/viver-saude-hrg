@@ -169,21 +169,20 @@ function apiGet(action, params, cb) {
 function apiPost(action, params, body, cb) {
   var url = API + "?action=" + action;
   if (params) Object.keys(params).forEach(function(k){ url += "&" + k + "=" + encodeURIComponent(params[k]); });
-  // Tentar POST real primeiro; se der CORS, usar GET com payload
   fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
   })
-    .then(function(r){ return r.json(); })
-    .then(function(d){ if(d.success !== false) cb(null, d); else cb(d.error || "Erro"); })
-    .catch(function(){
-      // Fallback: GET com payload (para arquivos locais)
-      var url2 = url + "&payload=" + encodeURIComponent(JSON.stringify(body));
-      fetch(url2, { mode: "no-cors" })
-        .then(function(){ setTimeout(function(){ cb(null, { success: true }); }, 2000); })
-        .catch(function(e){ cb(e.message); });
-    });
+    .then(function(r){
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      return r.json();
+    })
+    .then(function(d){
+      if(d && d.success !== false) cb(null, d);
+      else cb((d && d.error) || "Erro desconhecido");
+    })
+    .catch(function(e){ cb("Falha na requisição: " + e.message); });
 }
 
 function gsGet(aba, cb)        { apiGet("getAll",  { aba: aba }, function(err, d){ cb(err, d ? d.data : null); }); }
@@ -339,13 +338,13 @@ function renderCensoDiario(){
       h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
       h+='<div style="flex:1;">';
       h+='<div style="font-size:13px;font-weight:600;color:var(--navy);">'+esc(p.nome)+'</div>';
-      h+='<div style="font-size:11px;color:var(--gray);margin-top:1px;">'+esc(p.prontuario)+' · '+esc((p.especialidades||[]).join(", "))+'</div>';
+      h+='<div style="font-size:11px;color:var(--gray);margin-top:1px;">'+esc(p.prontuario)+(p.leito?' · <span style="background:#e0f2fe;color:#0369a1;padding:1px 5px;border-radius:4px;font-weight:600;">'+esc(p.leito)+'</span>':'')+' · '+esc((p.especialidades||[]).join(", "))+'</div>';
       h+='<div style="font-size:12px;color:var(--navy);margin-top:2px;">'+esc(p.diagnosticoPrincipal)+'</div>';
       if(p.pendencia) h+='<div style="font-size:11px;color:var(--amber);margin-top:2px;">⚠ '+esc(p.pendencia)+'</div>';
       h+='</div>';
       h+='<div style="text-align:right;font-size:11px;color:var(--gray);margin-left:8px;white-space:nowrap;">';
       h+=dias+'d';
-      if(p.dataAltaPrevista) h+='<br>Alta: '+fmt(p.dataAltaPrevista);
+      if(p.dataAltaPrevista) h+='<br><span style="color:var(--teal);font-weight:600;">Alta prev.: '+fmt(p.dataAltaPrevista)+'</span>';
       h+='</div></div></div>';
     });
     h+='</div>';
@@ -359,6 +358,32 @@ function renderCensoDiario(){
     html+=bloco(ui,"var(--teal)","🔵 Unidade de Internação");
   }
 
+
+  // Altas de hoje
+  var todayStr = tod();
+  var altasHoje = S.discharged.filter(function(p){ return toISO(p.dataAlta) === todayStr; });
+  // Altas previstas para amanhã
+  var amanha = new Date(); amanha.setDate(amanha.getDate()+1);
+  var amanhaStr = amanha.getFullYear()+"-"+String(amanha.getMonth()+1).padStart(2,"0")+"-"+String(amanha.getDate()).padStart(2,"0");
+  var altasAmanha = S.active.filter(function(p){ return toISO(p.dataAltaPrevista) === amanhaStr; });
+
+  if(altasHoje.length > 0 || altasAmanha.length > 0){
+    html+='<div style="margin-top:14px;padding-top:12px;border-top:2px solid #e2e8f0;">';
+    if(altasHoje.length > 0){
+      html+='<div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">✅ Altas de hoje ('+altasHoje.length+')</div>';
+      altasHoje.forEach(function(p){
+        html+='<div style="font-size:12px;color:var(--navy);padding:3px 0;">'+esc(p.nome)+'<span style="color:var(--gray)"> · '+esc(p.diagnosticoPrincipal)+'</span></div>';
+      });
+    }
+    if(altasAmanha.length > 0){
+      html+='<div style="font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:1px;margin-top:10px;margin-bottom:6px;">📅 Altas previstas amanhã ('+altasAmanha.length+')</div>';
+      altasAmanha.forEach(function(p){
+        html+='<div style="font-size:12px;color:var(--navy);padding:3px 0;">'+esc(p.nome)+'<span style="color:var(--gray)"> · '+(p.leito?esc(p.leito)+' · ':'')+esc(p.diagnosticoPrincipal)+'</span></div>';
+      });
+    }
+    html+='</div>';
+  }
+
   html+='<div style="text-align:center;font-size:10px;color:#94a3b8;margin-top:12px;padding-top:10px;border-top:1px solid #f1f5f9;">';
   html+=now.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+' · Viver Saúde · HRG</div>';
   html+='</div></div>';
@@ -368,6 +393,39 @@ function renderCensoDiario(){
 // ══════════════════════════════════════════
 // CENSO
 // ══════════════════════════════════════════
+
+function sortLeitoPriority(a, b) {
+  // Extrair número do leito para determinar andar
+  function andar(p) {
+    var l = (p.leito || "").trim().toUpperCase();
+    if (!l) {
+      // sem leito: ordenar pelo setor
+      if ((p.setor || "").indexOf("UTI") >= 0) return 900;
+      return 800;
+    }
+    // UTI Neonatal / UTI Neo
+    if (l.indexOf("NEO") >= 0) return 850;
+    // Sala amarela
+    if (l.indexOf("SALA") >= 0 || l.indexOf("AMARELA") >= 0) return 999;
+    // UTI sem número de andar
+    if (l.indexOf("UTI") >= 0) {
+      var n = parseInt(l.replace(/[^0-9]/g, "")) || 0;
+      return 800 + n;
+    }
+    // Leito numérico: primeiro dígito = andar
+    var num = parseInt(l.replace(/[^0-9]/g, "")) || 0;
+    if (num >= 100) return Math.floor(num / 100); // ex: 701 → 7
+    return num;
+  }
+  function leitoNum(p) {
+    var l = (p.leito || "").trim();
+    return parseInt(l.replace(/[^0-9]/g, "")) || 0;
+  }
+  var pa = andar(a), pb = andar(b);
+  if (pa !== pb) return pa - pb;
+  return leitoNum(a) - leitoNum(b);
+}
+
 function renderCenso(){
   var isMod=S.session&&S.session.role==="moderadora";
   var fa=S.active.filter(function(p){
@@ -418,7 +476,7 @@ function renderCenso(){
     html+='<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--red);display:inline-block;"></span>≥15 dias</span>';
     html+='</div>';
     if(fa.length===0) html+='<div class="empty"><div style="font-size:32px;">🏥</div><div style="margin-top:8px;font-size:13px;">Nenhum paciente internado.</div></div>';
-    else fa.forEach(function(p){html+=renderCard(p,false,isMod);});
+    else { var faSorted=fa.slice().sort(sortLeitoPriority); faSorted.forEach(function(p){html+=renderCard(p,false,isMod);}); }
   } else {
     if(isMod) html+='<button class="btn bs" style="width:100%;margin-bottom:12px;" onclick="S.novoConcluido=!S.novoConcluido;S.editingConc=null;renderCenso();">'+(S.novoConcluido?"✕ Cancelar":"+ Cadastrar paciente com alta")+'</button>';
     if(S.novoConcluido&&isMod) html+=renderFormConcluido();
@@ -613,6 +671,7 @@ function renderForm(){
   html+='<div class="grid3"><div><label>Prontuário</label><input type="text" id="f-pron" value="'+esc(p.prontuario||"")+'" placeholder="PRN-00000"/></div>';
   html+='<div><label>Idade</label><input type="number" id="f-idade" value="'+esc(p.idade||"")+'"/></div>';
   html+='<div><label>Sexo</label><select id="f-sexo"><option value="F"'+((p.sexo||"F")==="F"?" selected":"")+'>F</option><option value="M"'+(p.sexo==="M"?" selected":"")+'>M</option></select></div></div>';
+  html+='<div><label>Leito</label><input type="text" id="f-leito" value="'+esc(p.leito||"")+'" placeholder="Ex: 701, 302, UTI-5, UTI Neo-2"/></div>';
   html+='</div></div>';
 
   html+='<div style="margin-bottom:20px;"><div class="sec-title">Internamento</div><div style="display:flex;flex-direction:column;gap:10px;">';
@@ -680,6 +739,7 @@ function salvarForm(){
   var btnSalvar=el("btn-salvar-form");
   if(btnSalvar) btnSalvar.textContent="⏳ Salvando...";
   var form={nome:nome,prontuario:pron,idade:Number(idade),sexo:val("f-sexo"),
+    leito:val("f-leito").trim(),
     dataInternamento:val("f-din"),dataAltaPrevista:val("f-dap"),dataAlta:null,
     setor:val("f-setor"),tipoInternamento:val("f-tipo-int"),
     especialidades:S.formEsps.slice(),diagnosticoPrincipal:diag,
