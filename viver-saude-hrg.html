@@ -331,6 +331,7 @@ function renderCensoDiario(){
       h+='<div style="padding:8px 0;border-bottom:1px solid #f1f5f9;'+(sem==="sem-vermelho"?"border-left:3px solid var(--red);padding-left:6px;":"")+(sem==="sem-amarelo"?"border-left:3px solid var(--amber);padding-left:6px;":"")+'">';
       h+='<div style="display:flex;justify-content:space-between;align-items:flex-start;">';
       h+='<div style="flex:1;">';
+      if(p.leito) h+='<div style="font-size:10px;font-weight:700;color:#0369a1;letter-spacing:.5px;margin-bottom:1px;">🛏 '+esc(p.leito)+'</div>';
       h+='<div style="font-size:13px;font-weight:600;color:var(--navy);">'+esc(p.nome)+'</div>';
       h+='<div style="font-size:11px;color:var(--gray);margin-top:1px;">'+esc(p.prontuario)+(p.leito?' · <span style="background:#e0f2fe;color:#0369a1;padding:1px 5px;border-radius:4px;font-weight:600;">'+esc(p.leito)+'</span>':'')+' · '+esc((p.especialidades||[]).join(", "))+'</div>';
       h+='<div style="font-size:12px;color:var(--navy);margin-top:2px;">'+esc(p.diagnosticoPrincipal)+'</div>';
@@ -500,10 +501,13 @@ function renderCard(p,discharged,isMod){
   html+='<div style="padding:12px 14px;" onclick="toggleCard(\''+p.id+'\')">';
   html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">';
   html+='<div style="flex:1;"><div style="font-weight:600;font-size:14px;color:var(--navy);">'+esc(p.nome)+'</div>';
-  html+='<div style="font-size:12px;color:var(--gray);margin-top:2px;">'+esc(p.prontuario)+' · '+esc(p.idade)+'a · '+esc(p.sexo)+(p.leito&&!discharged?' · <span style="background:#e0f2fe;color:#0369a1;padding:1px 6px;border-radius:4px;font-weight:700;font-size:11px;">🛏 '+esc(p.leito)+'</span>':'')+' </div></div>';
+  html+='<div style="font-size:12px;color:var(--gray);margin-top:2px;">'+esc(p.prontuario)+' · '+esc(p.idade)+'a · '+esc(p.sexo)+'</div></div>';
   html+='<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">';
   if(discharged) html+='<span class="badge b-alta">✓ Alta '+fmt(p.dataAlta)+'</span>';
-  else html+='<span class="badge '+(p.setor==="UTI"?"b-uti":"b-ui")+'">'+esc(p.setor||"UI")+'</span>';
+  else {
+    html+='<span class="badge '+(p.setor==="UTI"?"b-uti":"b-ui")+'">'+esc(p.setor||"UI")+'</span>';
+    if(p.leito) html+='<span class="badge" style="background:#e0f2fe;color:#0369a1;font-weight:700;">🛏 '+esc(p.leito)+'</span>';
+  }
   if(p.pendencia&&!discharged) html+='<span class="badge b-pend">⚠ Pendência</span>';
   if(temEv) html+='<span class="badge b-ev">⚠ Ev. Adverso</span>';
   if(isReadm) html+='<span class="badge b-readm">🔄 Readmissão</span>';
