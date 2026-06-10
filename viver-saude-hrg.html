@@ -276,6 +276,10 @@ var USERS=[
 var pollTimer=null;
 function loadData(){
   if(S.tab==="novo"||S.editing||S.novoConcluido||S.editingConc) return;
+  // Não recarregar se o usuário está digitando na busca
+  var fs = document.getElementById("fsearch");
+  var ds = document.getElementById("dsearch");
+  if((fs && document.activeElement===fs)||(ds && document.activeElement===ds)) return;
   updateHeaderSub("sincronizando...");
   gsGet("pacientes_ativos",function(err,data){
     if(err){ showErro(err); return; }
@@ -515,7 +519,7 @@ function renderCenso(){
 
   if(S.subTab==="internados"){
     html+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">';
-    html+='<input type="text" id="fsearch" placeholder="🔍 Nome, prontuário, diagnóstico..." value="'+esc(S.filterSearch)+'" oninput="setSearch(this.value)" style="flex:2;min-width:160px;"/>';
+    html+='<input type="text" id="fsearch" placeholder="🔍 Nome, prontuário, diagnóstico..." value="'+esc(S.filterSearch)+'" oninput="setSearch(this.value)" style="flex:2;min-width:160px;" autocomplete="off"/>';
     html+='<select id="fsetor" onchange="S.filterSetor=this.value;renderCenso();" style="flex:1;min-width:100px;">';
     html+='<option'+(S.filterSetor==="Todos"?" selected":"")+'>Todos</option>';
     html+='<option'+(S.filterSetor==="UTI"?" selected":"")+'>UTI</option>';
@@ -545,6 +549,19 @@ function renderCenso(){
     else fd.forEach(function(p){html+=renderCard(p,true,isMod);});
   }
   el("content").innerHTML=html;
+  // Restaurar foco e posição do cursor nos campos de busca após re-render
+  var fsearch = document.getElementById("fsearch");
+  if(fsearch && document.activeElement !== fsearch && S.filterSearch){
+    fsearch.focus();
+    var len = fsearch.value.length;
+    fsearch.setSelectionRange(len, len);
+  }
+  var dsearch = document.getElementById("dsearch");
+  if(dsearch && document.activeElement !== dsearch && S.dSearch){
+    dsearch.focus();
+    var len2 = dsearch.value.length;
+    dsearch.setSelectionRange(len2, len2);
+  }
 }
 function setSubTab(t){S.subTab=t;S.novoConcluido=false;S.editingConc=null;renderCenso();}
 
