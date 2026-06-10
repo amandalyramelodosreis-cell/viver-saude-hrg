@@ -223,10 +223,21 @@ var S = {
   session:null, active:[], discharged:[],
   tab:"censo", subTab:"internados",
   editing:null, editingConc:null, discharging:null,
-  filterSetor:"Todos", filterPend:false, filterSearch:"",
+  filterSetor:"Todos", filterPend:false, filterSearch:"", filterPerm:0,
   dSearch:"", rMes:null, rAno:null, rFrom:"", rTo:"", rMode:"mes", detalhe:null,
   openCards:{}, formEsps:[], novoConcluido:false
 };
+var _searchTimer=null;
+function setSearch(val){
+  S.filterSearch=val;
+  if(_searchTimer) clearTimeout(_searchTimer);
+  _searchTimer=setTimeout(function(){renderCenso();_searchTimer=null;},300);
+}
+function setDSearch(val){
+  S.dSearch=val;
+  if(_searchTimer) clearTimeout(_searchTimer);
+  _searchTimer=setTimeout(function(){renderCenso();_searchTimer=null;},300);
+}
 
 // ══════════════════════════════════════════
 // UTILS
@@ -333,8 +344,9 @@ function renderContent(){
 function renderCensoDiario(){
   var now=new Date();
   var dateStr=now.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});
-  var uti=S.active.filter(function(p){return p.setor==="UTI";});
-  var ui=S.active.filter(function(p){return p.setor!=="UTI";});
+  var allAtivos=S.active.slice().sort(sortLeitoPriority);
+  var uti=allAtivos.filter(function(p){return p.setor==="UTI";});
+  var ui=allAtivos.filter(function(p){return p.setor!=="UTI";});
 
   var html='<div style="max-width:480px;margin:0 auto;">';
   html+='<div class="np" style="margin-bottom:12px;">';
@@ -422,32 +434,46 @@ function renderCensoDiario(){
 // ══════════════════════════════════════════
 
 function strLeito(p) {
-  // Garante que leito é sempre string, independente do tipo que vem da planilha
   var v = p.leito;
   if (v === null || v === undefined) return "";
   return String(v).trim();
 }
+
+// Prioridade dos andares:
+// 1→3→4→5→7→Sala Amarela(600)→UTI 1-7(700+n)→UTI Pediátrica/Neo(800)→sem leito(900)
+var ANDAR_ORDER = {1:1, 2:2, 3:3, 4:4, 5:5, 6:6, 7:7, 8:8, 9:9};
+
 function sortLeitoPriority(a, b) {
-  function andar(p) {
+  function prioridade(p) {
     var l = strLeito(p).toUpperCase();
     if (!l) {
-      if ((p.setor || "").indexOf("UTI") >= 0) return 900;
-      return 800;
+      // sem leito: UTI vai junto com UTIs, UI vai por último
+      var s = (p.setor||"").toUpperCase();
+      if (s.indexOf("UTI") >= 0) return 750;
+      return 900;
     }
-    if (l.indexOf("NEO") >= 0) return 850;
-    if (l.indexOf("SALA") >= 0 || l.indexOf("AMARELA") >= 0) return 999;
+    // Sala Amarela
+    if (l.indexOf("SALA") >= 0 || l.indexOf("AMARELA") >= 0) return 600;
+    // UTI Pediátrica / Neonatal
+    if (l.indexOf("PED") >= 0 || l.indexOf("NEO") >= 0 || l.indexOf("PEDI") >= 0) return 800;
+    // UTI numérica (ex: UTI-1, UTI 3, UTI3)
     if (l.indexOf("UTI") >= 0) {
-      var n = parseInt(l.replace(/[^0-9]/g, "")) || 0;
-      return 800 + n;
+      var n = parseInt(l.replace(/[^0-9]/g, "")) || 1;
+      return 700 + n;
     }
+    // Leito de andar (ex: 101, 301, 701)
     var num = parseInt(l.replace(/[^0-9]/g, "")) || 0;
-    if (num >= 100) return Math.floor(num / 100);
-    return num;
+    if (num >= 100) {
+      var andar = Math.floor(num / 100);
+      // Mapeamento: 1→10, 3→30, 4→40, 5→50, 7→70
+      return andar * 10;
+    }
+    return 500; // outros
   }
   function leitoNum(p) {
     return parseInt(strLeito(p).replace(/[^0-9]/g, "")) || 0;
   }
-  var pa = andar(a), pb = andar(b);
+  var pa = prioridade(a), pb = prioridade(b);
   if (pa !== pb) return pa - pb;
   return leitoNum(a) - leitoNum(b);
 }
@@ -457,6 +483,7 @@ function renderCenso(){
   var fa=S.active.filter(function(p){
     if(S.filterSetor!=="Todos"&&p.setor!==S.filterSetor) return false;
     if(S.filterPend&&!p.pendencia) return false;
+    if(S.filterPerm>0&&diffDays(p.dataInternamento)<S.filterPerm) return false;
     if(S.filterSearch){
       var q=S.filterSearch.toLowerCase();
       return (p.nome||"").toLowerCase().indexOf(q)>=0||(p.prontuario||"").toLowerCase().indexOf(q)>=0||(p.diagnosticoPrincipal||"").toLowerCase().indexOf(q)>=0;
@@ -488,13 +515,14 @@ function renderCenso(){
 
   if(S.subTab==="internados"){
     html+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">';
-    html+='<input type="text" id="fsearch" placeholder="🔍 Nome, prontuário, diagnóstico..." value="'+esc(S.filterSearch)+'" oninput="S.filterSearch=this.value;renderCenso();" style="flex:2;min-width:160px;"/>';
+    html+='<input type="text" id="fsearch" placeholder="🔍 Nome, prontuário, diagnóstico..." value="'+esc(S.filterSearch)+'" oninput="setSearch(this.value)" style="flex:2;min-width:160px;"/>';
     html+='<select id="fsetor" onchange="S.filterSetor=this.value;renderCenso();" style="flex:1;min-width:100px;">';
     html+='<option'+(S.filterSetor==="Todos"?" selected":"")+'>Todos</option>';
     html+='<option'+(S.filterSetor==="UTI"?" selected":"")+'>UTI</option>';
     html+='<option value="Unidade de Internação"'+(S.filterSetor==="Unidade de Internação"?" selected":"")+'>Unidade de Internação</option>';
     html+='</select>';
     html+='<button onclick="S.filterPend=!S.filterPend;renderCenso();" style="padding:9px 12px;border-radius:8px;border:2px solid;font-size:12px;background:'+(S.filterPend?"var(--amber-light)":"white")+';color:'+(S.filterPend?"var(--amber)":"var(--gray)")+';border-color:'+(S.filterPend?"var(--amber)":"var(--border)")+';">⚠ Pendentes</button>';
+    html+='<select onchange="S.filterPerm=Number(this.value);renderCenso();" style="flex:1;min-width:120px;"><option value="0"'+(S.filterPerm===0?" selected":"")+'>⏱ Permanência</option><option value="5"'+(S.filterPerm===5?" selected":"")+'>+5 dias</option><option value="10"'+(S.filterPerm===10?" selected":"")+'>+10 dias</option><option value="15"'+(S.filterPerm===15?" selected":"")+'>+15 dias</option></select>';
     html+='</div>';
     // Legenda semáforo
     html+='<div style="display:flex;gap:8px;margin-bottom:10px;font-size:11px;color:var(--gray);">';
@@ -506,7 +534,7 @@ function renderCenso(){
   } else {
     if(isMod) html+='<button class="btn bs" style="width:100%;margin-bottom:12px;" onclick="S.novoConcluido=!S.novoConcluido;S.editingConc=null;renderCenso();">'+(S.novoConcluido?"✕ Cancelar":"+ Cadastrar paciente com alta")+'</button>';
     if(S.novoConcluido&&isMod) html+=renderFormConcluido();
-    html+='<div style="margin-bottom:12px;"><input type="text" id="dsearch" placeholder="🔍 Buscar..." value="'+esc(S.dSearch)+'" oninput="S.dSearch=this.value;renderCenso();"/></div>';
+    html+='<div style="margin-bottom:12px;"><input type="text" id="dsearch" placeholder="🔍 Buscar..." value="'+esc(S.dSearch)+'" oninput="setDSearch(this.value)"/></div>';
     html+='<div class="grid4" style="margin-bottom:16px;">';
     html+='<div class="card minikpi"><div style="font-size:18px;font-family:serif;color:var(--teal);font-weight:700;">'+S.discharged.length+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;">Total altas</div></div>';
     html+='<div class="card minikpi"><div style="font-size:18px;font-family:serif;color:var(--teal);font-weight:700;">'+avgPerm+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;">Média perm.</div></div>';
