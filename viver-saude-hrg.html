@@ -223,7 +223,7 @@ var S = {
   session:null, active:[], discharged:[],
   tab:"censo", subTab:"internados",
   editing:null, editingConc:null, discharging:null,
-  filterSetor:"Todos", filterPend:false, filterSearch:"", filterPerm:0,
+  filterSetor:"Todos", filterPend:false, filterSearch:"", filterPerm:0, filterEsp:"", filterTipo:"",
   dSearch:"", rMes:null, rAno:null, rFrom:"", rTo:"", rMode:"mes", detalhe:null,
   openCards:{}, formEsps:[], novoConcluido:false
 };
@@ -261,7 +261,7 @@ function chk(id){ return el(id)?el(id).checked:false; }
 function semaforo(dias){ if(dias>=15) return "sem-vermelho"; if(dias>=10) return "sem-amarelo"; return ""; }
 function isEv(v){ var s=String(v||"").trim().toLowerCase(); return s&&s!=="nao"&&s!=="não"&&s!=="0"&&s!=="na"&&s!=="false"; }
 
-var ESPS=["Cardiologia","Clínica Médica","Neurologia","Ortopedia","Obstetrícia","Urologia","Ginecologia","Oncologia","Nefrologia","Pneumologia","Gastroenterologia","Infectologia","Pediatria","Cirurgia Geral","Cirurgia Torácica","Bucomaxilofacial","Cirurgia de Cabeça e Pescoço","Psiquiatria","Outro"];
+var ESPS=["Cardiologia","Clínica Médica","Neurologia","Ortopedia","Obstetrícia","Urologia","Ginecologia","Oncologia","Nefrologia","Pneumologia","Gastroenterologia","Infectologia","Pediatria","Cirurgia Geral","Cirurgia Vascular","Cirurgia Torácica","Cirurgia de Cabeça e Pescoço","Bucomaxilofacial","Psiquiatria","Outro"];
 var TIPOS_INT=["Urgência","Eletivo","Não informado"];
 var MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 var USERS=[
@@ -402,18 +402,26 @@ function renderCensoDiario(){
   }
 
 
-  // Altas de hoje
+  // Altas de hoje (já confirmadas)
   var todayStr = tod();
   var altasHoje = S.discharged.filter(function(p){ return toISO(p.dataAlta) === todayStr; });
+  // Altas previstas para hoje (ainda internados)
+  var altasPrevHoje = S.active.filter(function(p){ return toISO(p.dataAltaPrevista) === todayStr; });
   // Altas previstas para amanhã
   var amanha = new Date(); amanha.setDate(amanha.getDate()+1);
   var amanhaStr = amanha.getFullYear()+"-"+String(amanha.getMonth()+1).padStart(2,"0")+"-"+String(amanha.getDate()).padStart(2,"0");
   var altasAmanha = S.active.filter(function(p){ return toISO(p.dataAltaPrevista) === amanhaStr; });
 
-  if(altasHoje.length > 0 || altasAmanha.length > 0){
+  if(altasHoje.length > 0 || altasPrevHoje.length > 0 || altasAmanha.length > 0){
     html+='<div style="margin-top:14px;padding-top:12px;border-top:2px solid #e2e8f0;">';
+    if(altasPrevHoje.length > 0){
+      html+='<div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">⏳ Altas previstas hoje — pendentes ('+altasPrevHoje.length+')</div>';
+      altasPrevHoje.forEach(function(p){
+        html+='<div style="font-size:12px;color:var(--navy);padding:3px 0;">'+(strLeito(p)?'<span style="color:#0369a1;font-weight:700;">🛏 '+esc(strLeito(p))+'</span> · ':'')+esc(p.nome)+'<span style="color:var(--gray)"> · '+esc(p.diagnosticoPrincipal)+'</span></div>';
+      });
+    }
     if(altasHoje.length > 0){
-      html+='<div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">✅ Altas de hoje ('+altasHoje.length+')</div>';
+      html+='<div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-top:10px;margin-bottom:6px;">✅ Altas confirmadas hoje ('+altasHoje.length+')</div>';
       altasHoje.forEach(function(p){
         html+='<div style="font-size:12px;color:var(--navy);padding:3px 0;">'+esc(p.nome)+'<span style="color:var(--gray)"> · '+esc(p.diagnosticoPrincipal)+'</span></div>';
       });
@@ -421,7 +429,7 @@ function renderCensoDiario(){
     if(altasAmanha.length > 0){
       html+='<div style="font-size:11px;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:1px;margin-top:10px;margin-bottom:6px;">📅 Altas previstas amanhã ('+altasAmanha.length+')</div>';
       altasAmanha.forEach(function(p){
-        html+='<div style="font-size:12px;color:var(--navy);padding:3px 0;">'+esc(p.nome)+'<span style="color:var(--gray)"> · '+(strLeito(p)?esc(strLeito(p))+' · ':'')+esc(p.diagnosticoPrincipal)+'</span></div>';
+        html+='<div style="font-size:12px;color:var(--navy);padding:3px 0;">'+(strLeito(p)?'<span style="color:#0369a1;font-weight:700;">🛏 '+esc(strLeito(p))+'</span> · ':'')+esc(p.nome)+'<span style="color:var(--gray)"> · '+esc(p.diagnosticoPrincipal)+'</span></div>';
       });
     }
     html+='</div>';
@@ -488,6 +496,8 @@ function renderCenso(){
     if(S.filterSetor!=="Todos"&&p.setor!==S.filterSetor) return false;
     if(S.filterPend&&!p.pendencia) return false;
     if(S.filterPerm>0&&diffDays(p.dataInternamento)<S.filterPerm) return false;
+    if(S.filterEsp&&(p.especialidades||[]).indexOf(S.filterEsp)<0) return false;
+    if(S.filterTipo&&(p.tipoInternamento||"")!==S.filterTipo) return false;
     if(S.filterSearch){
       var q=S.filterSearch.toLowerCase();
       return (p.nome||"").toLowerCase().indexOf(q)>=0||(p.prontuario||"").toLowerCase().indexOf(q)>=0||(p.diagnosticoPrincipal||"").toLowerCase().indexOf(q)>=0;
@@ -527,6 +537,12 @@ function renderCenso(){
     html+='</select>';
     html+='<button onclick="S.filterPend=!S.filterPend;renderCenso();" style="padding:9px 12px;border-radius:8px;border:2px solid;font-size:12px;background:'+(S.filterPend?"var(--amber-light)":"white")+';color:'+(S.filterPend?"var(--amber)":"var(--gray)")+';border-color:'+(S.filterPend?"var(--amber)":"var(--border)")+';">⚠ Pendentes</button>';
     html+='<select onchange="S.filterPerm=Number(this.value);renderCenso();" style="flex:1;min-width:120px;"><option value="0"'+(S.filterPerm===0?" selected":"")+'>⏱ Permanência</option><option value="5"'+(S.filterPerm===5?" selected":"")+'>+5 dias</option><option value="10"'+(S.filterPerm===10?" selected":"")+'>+10 dias</option><option value="15"'+(S.filterPerm===15?" selected":"")+'>+15 dias</option></select>';
+    html+='</div>';
+    html+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">';
+    html+='<select onchange="S.filterEsp=this.value;renderCenso();" style="flex:2;min-width:160px;"><option value=""'+(S.filterEsp===""?" selected":"")+'>🩺 Todas as especialidades</option>';
+    ESPS.forEach(function(e){ html+='<option value="'+esc(e)+'"'+(S.filterEsp===e?" selected":"")+'>'+esc(e)+'</option>'; });
+    html+='</select>';
+    html+='<select onchange="S.filterTipo=this.value;renderCenso();" style="flex:1;min-width:140px;"><option value=""'+(S.filterTipo===""?" selected":"")+'>🏥 Todos os tipos</option><option value="Urgência"'+(S.filterTipo==="Urgência"?" selected":"")+'>Urgência</option><option value="Eletivo"'+(S.filterTipo==="Eletivo"?" selected":"")+'>Eletivo</option></select>';
     html+='</div>';
     // Legenda semáforo
     html+='<div style="display:flex;gap:8px;margin-bottom:10px;font-size:11px;color:var(--gray);">';
