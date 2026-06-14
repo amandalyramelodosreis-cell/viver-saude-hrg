@@ -238,6 +238,10 @@ function setDSearch(val){
   if(_searchTimer) clearTimeout(_searchTimer);
   _searchTimer=setTimeout(function(){renderCenso();_searchTimer=null;},300);
 }
+function setFilterEsp(val){ S.filterEsp=val; renderCenso(); }
+function setFilterTipo(val){ S.filterTipo=val; renderCenso(); }
+function setFilterSetor(val){ S.filterSetor=val; renderCenso(); }
+function setFilterPerm(val){ S.filterPerm=Number(val); renderCenso(); }
 
 // ══════════════════════════════════════════
 // UTILS
@@ -530,19 +534,19 @@ function renderCenso(){
   if(S.subTab==="internados"){
     html+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">';
     html+='<input type="text" id="fsearch" placeholder="🔍 Nome, prontuário, diagnóstico..." value="'+esc(S.filterSearch)+'" oninput="setSearch(this.value)" style="flex:2;min-width:160px;" autocomplete="off"/>';
-    html+='<select id="fsetor" onchange="S.filterSetor=this.value;renderCenso();" style="flex:1;min-width:100px;">';
+    html+='<select id="fsetor" onchange="setFilterSetor(this.value)" style="flex:1;min-width:100px;">';
     html+='<option'+(S.filterSetor==="Todos"?" selected":"")+'>Todos</option>';
     html+='<option'+(S.filterSetor==="UTI"?" selected":"")+'>UTI</option>';
     html+='<option value="Unidade de Internação"'+(S.filterSetor==="Unidade de Internação"?" selected":"")+'>Unidade de Internação</option>';
     html+='</select>';
     html+='<button onclick="S.filterPend=!S.filterPend;renderCenso();" style="padding:9px 12px;border-radius:8px;border:2px solid;font-size:12px;background:'+(S.filterPend?"var(--amber-light)":"white")+';color:'+(S.filterPend?"var(--amber)":"var(--gray)")+';border-color:'+(S.filterPend?"var(--amber)":"var(--border)")+';">⚠ Pendentes</button>';
-    html+='<select onchange="S.filterPerm=Number(this.value);renderCenso();" style="flex:1;min-width:120px;"><option value="0"'+(S.filterPerm===0?" selected":"")+'>⏱ Permanência</option><option value="5"'+(S.filterPerm===5?" selected":"")+'>+5 dias</option><option value="10"'+(S.filterPerm===10?" selected":"")+'>+10 dias</option><option value="15"'+(S.filterPerm===15?" selected":"")+'>+15 dias</option></select>';
+    html+='<select id="fperm" onchange="setFilterPerm(this.value)" style="flex:1;min-width:120px;"><option value="0"'+(S.filterPerm===0?" selected":"")+'>⏱ Permanência</option><option value="5"'+(S.filterPerm===5?" selected":"")+'>+5 dias</option><option value="10"'+(S.filterPerm===10?" selected":"")+'>+10 dias</option><option value="15"'+(S.filterPerm===15?" selected":"")+'>+15 dias</option></select>';
     html+='</div>';
     html+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">';
-    html+='<select onchange="S.filterEsp=this.value;renderCenso();" style="flex:2;min-width:160px;"><option value=""'+(S.filterEsp===""?" selected":"")+'>🩺 Todas as especialidades</option>';
-    ESPS.forEach(function(e){ html+='<option value="'+esc(e)+'"'+(S.filterEsp===e?" selected":"")+'>'+esc(e)+'</option>'; });
+    html+='<select id="fesp" onchange="setFilterEsp(this.value)" style="flex:2;min-width:160px;"><option value=""'+(S.filterEsp===""?" selected":"")+'>🩺 Todas especialidades</option>';
+    ESPS.forEach(function(e){ html+='<option value="'+e+'"'+(S.filterEsp===e?" selected":"")+'>'+e+'</option>'; });
     html+='</select>';
-    html+='<select onchange="S.filterTipo=this.value;renderCenso();" style="flex:1;min-width:140px;"><option value=""'+(S.filterTipo===""?" selected":"")+'>🏥 Todos os tipos</option><option value="Urgência"'+(S.filterTipo==="Urgência"?" selected":"")+'>Urgência</option><option value="Eletivo"'+(S.filterTipo==="Eletivo"?" selected":"")+'>Eletivo</option></select>';
+    html+='<select id="ftipo" onchange="setFilterTipo(this.value)" style="flex:1;min-width:140px;"><option value=""'+(S.filterTipo===""?" selected":"")+'>🏥 Todos tipos</option><option value="Urgência"'+(S.filterTipo==="Urgência"?" selected":"")+'>Urgência</option><option value="Eletivo"'+(S.filterTipo==="Eletivo"?" selected":"")+'>Eletivo</option></select>';
     html+='</div>';
     // Legenda semáforo
     html+='<div style="display:flex;gap:8px;margin-bottom:10px;font-size:11px;color:var(--gray);">';
