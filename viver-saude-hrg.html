@@ -1107,6 +1107,14 @@ function renderRelatorio(){
   var comProc=pp.filter(function(p){return p.procedimentoAlto===true||p.procedimentoAlto==="true"||p.procedimentoAlto==="TRUE";});
   var comReadm=pp.filter(function(p){return(p.readmissao30dias||"").toUpperCase()==="SIM";});
 
+  // Média geral de permanência
+  var somaPermGeral=0, contPermGeral=0;
+  pp.forEach(function(p){
+    var dias=p.dataAlta?diffDays(p.dataInternamento,p.dataAlta):diffDays(p.dataInternamento);
+    if(dias>0){somaPermGeral+=dias;contPermGeral++;}
+  });
+  var mediaPermGeral=contPermGeral>0?(somaPermGeral/contPermGeral).toFixed(1):"--";
+
   // Alta permanência: >10 dias
   var altaPerm=pp.filter(function(p){
     var d=p.dataAlta?diffDays(p.dataInternamento,p.dataAlta):diffDays(p.dataInternamento);
@@ -1203,6 +1211,13 @@ function renderRelatorio(){
     h+='</div>';
     return h;
   }
+
+  // KPI destaque — média de permanência
+  html+='<div class="card" style="padding:16px;margin-bottom:12px;background:linear-gradient(135deg,#0d2137,#0a4060);border-radius:12px;text-align:center;">';
+  html+='<div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Média de Permanência Geral</div>';
+  html+='<div style="font-size:42px;font-weight:700;font-family:serif;color:white;">'+mediaPermGeral+'<span style="font-size:20px;color:#94a3b8;">d</span></div>';
+  html+='<div style="font-size:11px;color:#94a3b8;margin-top:4px;">'+contPermGeral+' pacientes no período</div>';
+  html+='</div>';
 
   html+='<div class="grid2" style="margin-bottom:4px;">';
   html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--teal);">'+total+'</div><div class="kpi-lbl">Internações</div></div>';
