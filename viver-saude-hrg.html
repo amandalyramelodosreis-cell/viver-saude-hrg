@@ -355,9 +355,11 @@ function renderCensoDiario(soClinicaMedica){
   var now=new Date();
   var dateStr=now.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});
   var baseAtivos=S.active;
-  if(soClinicaMedica) baseAtivos=S.active.filter(function(p){ return (p.especialidades||[]).indexOf("Clínica Médica")>=0; });
+  if(soClinicaMedica) baseAtivos=S.active.filter(function(p){
+    return (p.especialidades||[]).indexOf("Clínica Médica")>=0 && p.setor!=="UTI";
+  });
   var allAtivos=baseAtivos.slice().sort(sortLeitoPriority);
-  var uti=allAtivos.filter(function(p){return p.setor==="UTI";});
+  var uti=soClinicaMedica?[]:allAtivos.filter(function(p){return p.setor==="UTI";});
   var ui=allAtivos.filter(function(p){return p.setor!=="UTI";});
 
   var html='<div style="max-width:480px;margin:0 auto;">';
@@ -420,7 +422,7 @@ function renderCensoDiario(soClinicaMedica){
   var amanhaStr = amanha.getFullYear()+"-"+String(amanha.getMonth()+1).padStart(2,"0")+"-"+String(amanha.getDate()).padStart(2,"0");
   var altasAmanha = S.active.filter(function(p){ return toISO(p.dataAltaPrevista) === amanhaStr; });
 
-  if(altasHoje.length > 0 || altasPrevHoje.length > 0 || altasAmanha.length > 0){
+  if(!soClinicaMedica && (altasHoje.length > 0 || altasPrevHoje.length > 0 || altasAmanha.length > 0)){
     html+='<div style="margin-top:14px;padding-top:12px;border-top:2px solid #e2e8f0;">';
     if(altasPrevHoje.length > 0){
       html+='<div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">⏳ Altas previstas hoje — pendentes ('+altasPrevHoje.length+')</div>';
