@@ -1124,37 +1124,39 @@ function renderRelatorio(){
   var diagTop=Object.keys(diagC).map(function(d){return[d,diagC[d]];}).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
 
   // Tempo médio por especialidade
+  // Grupos de especialidade condensados
+  function grupoEsp(e){
+    var cir=["Cirurgia Geral","Cirurgia Vascular","Cirurgia Torácica","Cirurgia de Cabeça e Pescoço","Bucomaxilofacial","Urologia","Ortopedia"];
+    var go=["Ginecologia","Obstetrícia"];
+    var cm=["Clínica Médica","Nefrologia","Neurologia","Pneumologia","Gastroenterologia","Infectologia","Hematologia","Endocrinologia","Reumatologia"];
+    if(cir.indexOf(e)>=0) return "Cirúrgico";
+    if(go.indexOf(e)>=0) return "GO";
+    if(cm.indexOf(e)>=0) return "Clínica Médica";
+    if(e==="Cardiologia") return "Cardiologia";
+    if(e==="Pediatria") return "Pediatria";
+    if(e==="Psiquiatria") return "Psiquiatria";
+    return "Clínica Médica"; // outros clínicos
+  }
   var espPerm={},espCount2={};
   pp.forEach(function(p){
     var dias=p.dataAlta?diffDays(p.dataInternamento,p.dataAlta):diffDays(p.dataInternamento);
+    var grupos={};
     (p.especialidades||[]).forEach(function(e){
-      espPerm[e]=(espPerm[e]||0)+dias;
-      espCount2[e]=(espCount2[e]||0)+1;
+      var g=grupoEsp(e);
+      grupos[g]=true;
+    });
+    Object.keys(grupos).forEach(function(g){
+      espPerm[g]=(espPerm[g]||0)+dias;
+      espCount2[g]=(espCount2[g]||0)+1;
     });
   });
-  var espPermMedia=Object.keys(espPerm).map(function(e){
-    return[e,(espPerm[e]/espCount2[e]).toFixed(1),espCount2[e]];
-  }).sort(function(a,b){return b[1]-a[1];});
+  // Ordem fixa dos grupos
+  var ORDEM_GRUPOS=["Clínica Médica","Cardiologia","Cirúrgico","GO","Pediatria","Psiquiatria"];
+  var espPermMedia=ORDEM_GRUPOS.filter(function(g){return espCount2[g]>0;}).map(function(g){
+    return[g,(espPerm[g]/espCount2[g]).toFixed(1),espCount2[g]];
+  });
 
-  // Sazonalidade: internações e altas por mês nos últimos 12 meses
-  var sazonMeses=[];
-  for(var si=11;si>=0;si--){
-    var sd=new Date(now.getFullYear(),now.getMonth()-si,1);
-    var sKey=sd.getFullYear()+"-"+(sd.getMonth()+1);
-    var sLabel=MESES[sd.getMonth()].substring(0,3)+"/"+String(sd.getFullYear()).substring(2);
-    var sInt=S.discharged.concat(S.active).filter(function(p){
-      if(!p.dataInternamento)return false;
-      var d=new Date(toISO(p.dataInternamento)+"T12:00:00");
-      return d.getMonth()===sd.getMonth()&&d.getFullYear()===sd.getFullYear();
-    }).length;
-    var sAlt=S.discharged.filter(function(p){
-      if(!p.dataAlta)return false;
-      var d=new Date(toISO(p.dataAlta)+"T12:00:00");
-      return d.getMonth()===sd.getMonth()&&d.getFullYear()===sd.getFullYear();
-    }).length;
-    sazonMeses.push({label:sLabel,int:sInt,alt:sAlt});
-  }
-  var maxSazon=Math.max.apply(null,sazonMeses.map(function(m){return Math.max(m.int,m.alt);}));
+
 
   var html='<div class="np">';
   html+='<div class="serif" style="font-size:20px;color:var(--navy);margin-bottom:4px;">Relatórios</div>';
@@ -1283,7 +1285,7 @@ function renderRelatorio(){
   // Tempo médio por especialidade
   html+='<div class="card" style="padding:16px;margin-bottom:12px;">';
   html+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;">⏱ Permanência Média por Especialidade</div>';
-  espPermMedia.slice(0,6).forEach(function(e){
+  espPermMedia.forEach(function(e){
     html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">';
     html+='<span style="color:var(--navy);">'+esc(e[0])+'</span>';
     html+='<div style="display:flex;gap:8px;align-items:center;">';
@@ -1293,51 +1295,47 @@ function renderRelatorio(){
   });
   html+='</div>';
 
-  // Gráfico de Sazonalidade — 12 meses
+  // Gráfico de Ocupação Média — últimos 6 meses
+  // Calcular ocupação média (diárias/dias do mês) para cada um dos 6 meses
+  var ocup6=graficoMeses.map(function(m){
+    var diasDoMes=new Date(parseInt(m.key.split("-")[0]),parseInt(m.key.split("-")[1]),0).getDate();
+    var total=m.uti+m.ui;
+    return{label:m.label,total:total,uti:m.uti,ui:m.ui,
+      ocTotal:(total/diasDoMes).toFixed(1),
+      ocUTI:(m.uti/diasDoMes).toFixed(1),
+      ocUI:(m.ui/diasDoMes).toFixed(1),
+      diasDoMes:diasDoMes};
+  });
+  var maxOcup=Math.max.apply(null,ocup6.map(function(m){return parseFloat(m.ocTotal)||0;}));
+
   html+='<div class="card" style="padding:16px;margin-bottom:12px;">';
-  html+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:8px;">📈 Sazonalidade — Internações vs Altas (12 meses)</div>';
+  html+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:8px;">📊 Ocupação Média Diária — Últimos 6 meses</div>';
   html+='<div style="display:flex;gap:12px;font-size:10px;color:var(--gray);margin-bottom:12px;">';
-  html+='<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:3px;background:var(--teal);display:inline-block;border-radius:2px;"></span>Internações</span>';
-  html+='<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:3px;background:var(--green);display:inline-block;border-radius:2px;"></span>Altas</span>';
+  html+='<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--red);display:inline-block;border-radius:2px;opacity:.8;"></span>UTI</span>';
+  html+='<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--teal);display:inline-block;border-radius:2px;opacity:.8;"></span>UI</span>';
   html+='</div>';
-  var chartH=120;
-  html+='<div style="position:relative;height:'+(chartH+24)+'px;">';
-  // Linhas de grade
-  [0,25,50,75,100].forEach(function(pct){
-    var y=chartH-(chartH*pct/100);
-    html+='<div style="position:absolute;left:0;right:0;top:'+y+'px;border-top:1px dashed #e2e8f0;z-index:0;"></div>';
-    if(pct===0||pct===50||pct===100) html+='<div style="position:absolute;left:0;top:'+(y-8)+'px;font-size:9px;color:#94a3b8;">'+(maxSazon>0?Math.round(maxSazon*pct/100):'')+'</div>';
-  });
-  // Pontos e linhas
-  var pts=sazonMeses.map(function(m,i){
-    return {
-      x:30+i*(100-30)/(sazonMeses.length-1||1),
-      yi:maxSazon>0?chartH-(chartH*m.int/maxSazon):chartH,
-      ya:maxSazon>0?chartH-(chartH*m.alt/maxSazon):chartH,
-      m:m
-    };
-  });
-  // Linha internações
-  for(var li=1;li<pts.length;li++){
-    var dx=pts[li].x-pts[li-1].x,dy=pts[li].yi-pts[li-1].yi;
-    var len=Math.sqrt(dx*dx+dy*dy);
-    var ang=Math.atan2(dy,dx)*180/Math.PI;
-    html+='<div style="position:absolute;left:'+pts[li-1].x+'%;top:'+pts[li-1].yi+'px;width:'+len.toFixed(1)+'px;height:2px;background:var(--teal);transform-origin:0 50%;transform:rotate('+ang+'deg);z-index:1;"></div>';
-  }
-  // Linha altas
-  for(var la=1;la<pts.length;la++){
-    var dx2=pts[la].x-pts[la-1].x,dy2=pts[la].ya-pts[la-1].ya;
-    var len2=Math.sqrt(dx2*dx2+dy2*dy2);
-    var ang2=Math.atan2(dy2,dx2)*180/Math.PI;
-    html+='<div style="position:absolute;left:'+pts[la-1].x+'%;top:'+pts[la-1].ya+'px;width:'+len2.toFixed(1)+'px;height:2px;background:var(--green);transform-origin:0 50%;transform:rotate('+ang2+'deg);z-index:1;"></div>';
-  }
-  // Pontos e labels
-  pts.forEach(function(pt){
-    html+='<div title="Internações: '+pt.m.int+'" style="position:absolute;left:calc('+pt.x+'% - 4px);top:'+(pt.yi-4)+'px;width:8px;height:8px;background:var(--teal);border-radius:50%;border:2px solid white;z-index:2;"></div>';
-    html+='<div title="Altas: '+pt.m.alt+'" style="position:absolute;left:calc('+pt.x+'% - 4px);top:'+(pt.ya-4)+'px;width:8px;height:8px;background:var(--green);border-radius:50%;border:2px solid white;z-index:2;"></div>';
-    html+='<div style="position:absolute;left:calc('+pt.x+'% - 12px);top:'+(chartH+6)+'px;font-size:8px;color:var(--gray);text-align:center;width:24px;">'+pt.m.label+'</div>';
+  html+='<div style="display:flex;align-items:flex-end;gap:6px;height:140px;">';
+  ocup6.forEach(function(m){
+    var hTotal=maxOcup>0?Math.round((parseFloat(m.ocTotal)/maxOcup)*110):0;
+    var hUTI=maxOcup>0?Math.round((parseFloat(m.ocUTI)/maxOcup)*110):0;
+    var hUI=hTotal-hUTI;
+    html+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;">';
+    html+='<div style="font-size:9px;color:var(--navy);font-weight:700;margin-bottom:3px;">'+m.ocTotal+'</div>';
+    html+='<div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;">';
+    if(hUTI>0) html+='<div style="height:'+hUTI+'px;background:var(--red);border-radius:3px 3px 0 0;opacity:.8;" title="UTI: '+m.ocUTI+' pac/dia"></div>';
+    if(hUI>0)  html+='<div style="height:'+hUI+'px;background:var(--teal);'+(hUTI===0?'border-radius:3px 3px 0 0;':'')+' opacity:.8;" title="UI: '+m.ocUI+' pac/dia"></div>';
+    html+='</div>';
+    html+='<div style="font-size:8px;color:var(--gray);margin-top:4px;text-align:center;">'+m.label+'</div>';
+    html+='</div>';
   });
   html+='</div>';
+  // Linha de valores UTI abaixo
+  html+='<div style="display:flex;gap:6px;margin-top:8px;">';
+  ocup6.forEach(function(m){
+    html+='<div style="flex:1;text-align:center;font-size:9px;color:var(--red);">'+m.ocUTI+'</div>';
+  });
+  html+='</div>';
+  html+='<div style="text-align:center;font-size:9px;color:var(--gray);margin-top:2px;">ocupação UTI média/dia</div>';
   html+='</div>';
 
   // Gráfico UTI vs UI últimos 6 meses
