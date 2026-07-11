@@ -250,11 +250,24 @@ function setFilterPerm(val){ S.filterPerm=Number(val); renderCenso(); }
 function tod(){ return new Date().toISOString().split("T")[0]; }
 function toISO(d){
   if(!d) return "";
-  if(d instanceof Date) return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-  var s=String(d);
-  // "Thu Dec 18 2025 00:00:00 GMT-0300..." → parse
-  if(s.length>10&&s.indexOf("-")!==4){var dt=new Date(s);if(!isNaN(dt))return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");}
-  return s.substring(0,10);
+  // Objeto Date direto
+  if(d instanceof Date){
+    if(isNaN(d)) return "";
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  var s=String(d).trim();
+  if(!s) return "";
+  // Já está no formato YYYY-MM-DD
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0,10);
+  // Formato DD/MM/YYYY
+  if(/^\d{2}\/\d{2}\/\d{4}/.test(s)){
+    var p=s.split("/");
+    return p[2].substring(0,4)+"-"+p[1]+"-"+p[0];
+  }
+  // Formato "Thu Dec 18 2025..." ou similar
+  var dt=new Date(s);
+  if(!isNaN(dt)) return dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0");
+  return "";
 }
 function fmt(d){ if(!d) return "—"; var s=toISO(d); if(!s) return "—"; return new Date(s+"T12:00:00").toLocaleDateString("pt-BR"); }
 function diffDays(a,b){ var aa=toISO(a)||tod(); var bb=toISO(b)||tod(); return Math.max(0,Math.floor((new Date(bb+"T12:00:00")-new Date(aa+"T12:00:00"))/86400000)); }
@@ -971,8 +984,14 @@ function renderRelatorio(){
       var dinStr=toISO(p.dataInternamento);
       if(!dinStr) return false;
       var din=new Date(dinStr+"T12:00:00");
-      var daltStr=p.dataAlta?toISO(p.dataAlta):null;
-      var dalt=daltStr?new Date(daltStr+"T12:00:00"):new Date();
+      var dalt;
+      if(p.dataAlta){
+        var daltStr=toISO(p.dataAlta);
+        if(!daltStr) return false;
+        dalt=new Date(daltStr+"T12:00:00");
+      } else {
+        dalt=new Date();
+      }
       return din<=ct&&dalt>=cf;
     });
     pd=S.discharged.filter(function(p){
@@ -992,10 +1011,15 @@ function renderRelatorio(){
       var dinStr=toISO(p.dataInternamento);
       if(!dinStr) return false;
       var din=new Date(dinStr+"T12:00:00");
-      // Paciente sem alta: considera alta hoje (ainda internado)
-      var daltStr=p.dataAlta?toISO(p.dataAlta):null;
-      var dalt=daltStr?new Date(daltStr+"T12:00:00"):new Date();
-      // Inclui se houve sobreposição com o mês: internado antes do fim E alta após o início
+      var dalt;
+      if(p.dataAlta){
+        var daltStr=toISO(p.dataAlta);
+        if(!daltStr) return false; // data de alta inválida: excluir
+        dalt=new Date(daltStr+"T12:00:00");
+      } else {
+        // Ainda internado: considera alta hoje
+        dalt=new Date();
+      }
       return din<=fimMes && dalt>=inicioMes;
     });
     pd=S.discharged.filter(function(p){
@@ -1078,6 +1102,60 @@ function renderRelatorio(){
   var comProc=pp.filter(function(p){return p.procedimentoAlto===true||p.procedimentoAlto==="true"||p.procedimentoAlto==="TRUE";});
   var comReadm=pp.filter(function(p){return(p.readmissao30dias||"").toUpperCase()==="SIM";});
 
+  // Alta permanência: >10 dias
+  var altaPerm=pp.filter(function(p){
+    var d=p.dataAlta?diffDays(p.dataInternamento,p.dataAlta):diffDays(p.dataInternamento);
+    return d>10;
+  });
+
+  // Ocupação média diária do período
+  var diasPeriodo=Math.max(1,Math.round((fimMes-inicioMes)/86400000));
+  var ocupacaoMedia=(totalDiariasMes/diasPeriodo).toFixed(1);
+  var ocupacaoUTIMedia=(totalDiasUTIMes/diasPeriodo).toFixed(1);
+
+  // Taxa de readmissão (readm/altas)
+  var taxaReadm=totalAltas>0?((comReadm.length/totalAltas)*100).toFixed(1)+"%":"--";
+  // Taxa de evento adverso
+  var taxaEv=total>0?((comEv.length/total)*100).toFixed(1)+"%":"--";
+
+  // Top diagnósticos
+  var diagC={};
+  pp.forEach(function(p){if(p.diagnosticoPrincipal){var d=(p.diagnosticoPrincipal||"").trim();diagC[d]=(diagC[d]||0)+1;}});
+  var diagTop=Object.keys(diagC).map(function(d){return[d,diagC[d]];}).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+
+  // Tempo médio por especialidade
+  var espPerm={},espCount2={};
+  pp.forEach(function(p){
+    var dias=p.dataAlta?diffDays(p.dataInternamento,p.dataAlta):diffDays(p.dataInternamento);
+    (p.especialidades||[]).forEach(function(e){
+      espPerm[e]=(espPerm[e]||0)+dias;
+      espCount2[e]=(espCount2[e]||0)+1;
+    });
+  });
+  var espPermMedia=Object.keys(espPerm).map(function(e){
+    return[e,(espPerm[e]/espCount2[e]).toFixed(1),espCount2[e]];
+  }).sort(function(a,b){return b[1]-a[1];});
+
+  // Sazonalidade: internações e altas por mês nos últimos 12 meses
+  var sazonMeses=[];
+  for(var si=11;si>=0;si--){
+    var sd=new Date(now.getFullYear(),now.getMonth()-si,1);
+    var sKey=sd.getFullYear()+"-"+(sd.getMonth()+1);
+    var sLabel=MESES[sd.getMonth()].substring(0,3)+"/"+String(sd.getFullYear()).substring(2);
+    var sInt=S.discharged.concat(S.active).filter(function(p){
+      if(!p.dataInternamento)return false;
+      var d=new Date(toISO(p.dataInternamento)+"T12:00:00");
+      return d.getMonth()===sd.getMonth()&&d.getFullYear()===sd.getFullYear();
+    }).length;
+    var sAlt=S.discharged.filter(function(p){
+      if(!p.dataAlta)return false;
+      var d=new Date(toISO(p.dataAlta)+"T12:00:00");
+      return d.getMonth()===sd.getMonth()&&d.getFullYear()===sd.getFullYear();
+    }).length;
+    sazonMeses.push({label:sLabel,int:sInt,alt:sAlt});
+  }
+  var maxSazon=Math.max.apply(null,sazonMeses.map(function(m){return Math.max(m.int,m.alt);}));
+
   var html='<div class="np">';
   html+='<div class="serif" style="font-size:20px;color:var(--navy);margin-bottom:4px;">Relatórios</div>';
   html+='<div style="font-size:12px;color:var(--gray);margin-bottom:14px;">Hospital Rio Grande · Viver Saúde</div>';
@@ -1119,16 +1197,19 @@ function renderRelatorio(){
     return h;
   }
 
-  html+='<div class="grid2" style="margin-bottom:12px;">';
+  html+='<div class="grid2" style="margin-bottom:4px;">';
   html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--teal);">'+total+'</div><div class="kpi-lbl">Internações</div></div>';
   html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--green);">'+totalAltas+'</div><div class="kpi-lbl">Altas</div></div>';
   html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--navy);">'+totalDiariasMes+'</div><div class="kpi-lbl">Diárias totais</div></div>';
   html+=mkKpi("Diárias UTI",totalDiasUTIMes,"var(--red)","uti");
   html+=mkKpi("% diárias UTI",pctUTI,"var(--red)","pctuti");
-  html+=mkKpi("Eventos adversos",comEv.length,"var(--amber)","ev");
+  html+='<div class="card kpi-card" style="background:linear-gradient(135deg,#e0f2fe,#f0f9ff);"><div class="kpi-val" style="color:#0369a1;">'+ocupacaoMedia+'</div><div class="kpi-lbl">Ocup. média/dia</div></div>';
+  html+='<div class="card kpi-card" style="background:linear-gradient(135deg,#fee2e2,#fff5f5);"><div class="kpi-val" style="color:var(--red);">'+ocupacaoUTIMedia+'</div><div class="kpi-lbl">Ocup. UTI/dia</div></div>';
+  html+=mkKpi("Alta permanência",altaPerm.length,"#7c3aed","altaperm");
+  html+=mkKpi("Eventos adversos",comEv.length+" ("+taxaEv+")","var(--amber)","ev");
   html+=mkKpi("Ressonâncias",comRess.length,"#9a3412","ress");
   html+=mkKpi("Proc. alto custo",comProc.length,"#9a3412","proc");
-  html+=mkKpi("Readmissões 30d",comReadm.length,"var(--red)","readm");
+  html+=mkKpi("Readmissões 30d",comReadm.length+" ("+taxaReadm+")","var(--red)","readm");
   html+='</div>';
 
   // Painéis de detalhe
@@ -1165,10 +1246,99 @@ function renderRelatorio(){
     );
   }
   if(S.detalhe==="readm"){
-    html+=detalheBox("Readmissões em 30 dias ("+comReadm.length+")",
+    html+=detalheBox("Readmissões em 30 dias ("+comReadm.length+" · Taxa: "+taxaReadm+")",
       comReadm.map(function(p){return dRow2(p.nome,fmt(p.dataInternamento));})
     );
   }
+  if(S.detalhe==="altaperm"){
+    html+=detalheBox("Alta Permanência >10 dias ("+altaPerm.length+")",
+      altaPerm.slice().sort(function(a,b){
+        var da=a.dataAlta?diffDays(a.dataInternamento,a.dataAlta):diffDays(a.dataInternamento);
+        var db=b.dataAlta?diffDays(b.dataInternamento,b.dataAlta):diffDays(b.dataInternamento);
+        return db-da;
+      }).map(function(p){
+        var dias=p.dataAlta?diffDays(p.dataInternamento,p.dataAlta):diffDays(p.dataInternamento);
+        return'<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">'
+          +'<div style="display:flex;justify-content:space-between;"><span style="font-weight:600;color:var(--navy);">'+esc(p.nome)+'</span>'
+          +'<span style="background:#ede9fe;color:#7c3aed;padding:1px 7px;border-radius:4px;font-weight:700;">'+dias+'d</span></div>'
+          +'<div style="color:var(--gray);margin-top:2px;font-size:11px;">'+esc(p.diagnosticoPrincipal||'')+(p.dataAlta?' · Alta: '+fmt(p.dataAlta):' · Internado')+'</div>'
+          +'</div>';
+      })
+    );
+  }
+
+  // Top diagnósticos
+  html+='<div class="card" style="padding:16px;margin-bottom:12px;">';
+  html+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;">🏥 Top Diagnósticos do Período</div>';
+  var maxDiag=diagTop.length>0?diagTop[0][1]:1;
+  diagTop.forEach(function(d){
+    var pct=Math.round(d[1]/maxDiag*100);
+    html+='<div style="margin-bottom:7px;">';
+    html+='<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;"><span style="color:var(--navy);font-weight:600;">'+esc(d[0])+'</span><span style="color:var(--teal);font-weight:700;">'+d[1]+'</span></div>';
+    html+='<div style="background:#e2e8f0;border-radius:99px;height:6px;"><div style="background:var(--teal);width:'+pct+'%;height:6px;border-radius:99px;"></div></div>';
+    html+='</div>';
+  });
+  html+='</div>';
+
+  // Tempo médio por especialidade
+  html+='<div class="card" style="padding:16px;margin-bottom:12px;">';
+  html+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;">⏱ Permanência Média por Especialidade</div>';
+  espPermMedia.slice(0,6).forEach(function(e){
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">';
+    html+='<span style="color:var(--navy);">'+esc(e[0])+'</span>';
+    html+='<div style="display:flex;gap:8px;align-items:center;">';
+    html+='<span style="color:var(--gray);font-size:11px;">'+e[2]+'pac</span>';
+    html+='<span style="background:#e0f2fe;color:#0369a1;padding:1px 8px;border-radius:4px;font-weight:700;">'+e[1]+'d</span>';
+    html+='</div></div>';
+  });
+  html+='</div>';
+
+  // Gráfico de Sazonalidade — 12 meses
+  html+='<div class="card" style="padding:16px;margin-bottom:12px;">';
+  html+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:8px;">📈 Sazonalidade — Internações vs Altas (12 meses)</div>';
+  html+='<div style="display:flex;gap:12px;font-size:10px;color:var(--gray);margin-bottom:12px;">';
+  html+='<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:3px;background:var(--teal);display:inline-block;border-radius:2px;"></span>Internações</span>';
+  html+='<span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:3px;background:var(--green);display:inline-block;border-radius:2px;"></span>Altas</span>';
+  html+='</div>';
+  var chartH=120;
+  html+='<div style="position:relative;height:'+(chartH+24)+'px;">';
+  // Linhas de grade
+  [0,25,50,75,100].forEach(function(pct){
+    var y=chartH-(chartH*pct/100);
+    html+='<div style="position:absolute;left:0;right:0;top:'+y+'px;border-top:1px dashed #e2e8f0;z-index:0;"></div>';
+    if(pct===0||pct===50||pct===100) html+='<div style="position:absolute;left:0;top:'+(y-8)+'px;font-size:9px;color:#94a3b8;">'+(maxSazon>0?Math.round(maxSazon*pct/100):'')+'</div>';
+  });
+  // Pontos e linhas
+  var pts=sazonMeses.map(function(m,i){
+    return {
+      x:30+i*(100-30)/(sazonMeses.length-1||1),
+      yi:maxSazon>0?chartH-(chartH*m.int/maxSazon):chartH,
+      ya:maxSazon>0?chartH-(chartH*m.alt/maxSazon):chartH,
+      m:m
+    };
+  });
+  // Linha internações
+  for(var li=1;li<pts.length;li++){
+    var dx=pts[li].x-pts[li-1].x,dy=pts[li].yi-pts[li-1].yi;
+    var len=Math.sqrt(dx*dx+dy*dy);
+    var ang=Math.atan2(dy,dx)*180/Math.PI;
+    html+='<div style="position:absolute;left:'+pts[li-1].x+'%;top:'+pts[li-1].yi+'px;width:'+len.toFixed(1)+'px;height:2px;background:var(--teal);transform-origin:0 50%;transform:rotate('+ang+'deg);z-index:1;"></div>';
+  }
+  // Linha altas
+  for(var la=1;la<pts.length;la++){
+    var dx2=pts[la].x-pts[la-1].x,dy2=pts[la].ya-pts[la-1].ya;
+    var len2=Math.sqrt(dx2*dx2+dy2*dy2);
+    var ang2=Math.atan2(dy2,dx2)*180/Math.PI;
+    html+='<div style="position:absolute;left:'+pts[la-1].x+'%;top:'+pts[la-1].ya+'px;width:'+len2.toFixed(1)+'px;height:2px;background:var(--green);transform-origin:0 50%;transform:rotate('+ang2+'deg);z-index:1;"></div>';
+  }
+  // Pontos e labels
+  pts.forEach(function(pt){
+    html+='<div title="Internações: '+pt.m.int+'" style="position:absolute;left:calc('+pt.x+'% - 4px);top:'+(pt.yi-4)+'px;width:8px;height:8px;background:var(--teal);border-radius:50%;border:2px solid white;z-index:2;"></div>';
+    html+='<div title="Altas: '+pt.m.alt+'" style="position:absolute;left:calc('+pt.x+'% - 4px);top:'+(pt.ya-4)+'px;width:8px;height:8px;background:var(--green);border-radius:50%;border:2px solid white;z-index:2;"></div>';
+    html+='<div style="position:absolute;left:calc('+pt.x+'% - 12px);top:'+(chartH+6)+'px;font-size:8px;color:var(--gray);text-align:center;width:24px;">'+pt.m.label+'</div>';
+  });
+  html+='</div>';
+  html+='</div>';
 
   // Gráfico UTI vs UI últimos 6 meses
   html+='<div class="card" style="padding:16px;margin-bottom:12px;">';
