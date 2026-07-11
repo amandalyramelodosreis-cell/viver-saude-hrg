@@ -1298,13 +1298,19 @@ function renderRelatorio(){
   // Gráfico de Ocupação Média — últimos 6 meses
   // Calcular ocupação média (diárias/dias do mês) para cada um dos 6 meses
   var ocup6=graficoMeses.map(function(m){
-    var diasDoMes=new Date(parseInt(m.key.split("-")[0]),parseInt(m.key.split("-")[1]),0).getDate();
+    var parts=m.key.split("-");
+    var ano=parseInt(parts[0]),mes=parseInt(parts[1]);
+    var diasDoMes=new Date(ano,mes,0).getDate();
+    // Se for o mês atual, usar dias transcorridos até hoje
+    var hoje=new Date();
+    var eMesAtual=(ano===hoje.getFullYear()&&mes===(hoje.getMonth()+1));
+    var divisor=eMesAtual?hoje.getDate():diasDoMes;
     var total=m.uti+m.ui;
-    return{label:m.label,total:total,uti:m.uti,ui:m.ui,
-      ocTotal:(total/diasDoMes).toFixed(1),
-      ocUTI:(m.uti/diasDoMes).toFixed(1),
-      ocUI:(m.ui/diasDoMes).toFixed(1),
-      diasDoMes:diasDoMes};
+    return{label:m.label+(eMesAtual?" *":""),total:total,uti:m.uti,ui:m.ui,
+      ocTotal:(total/divisor).toFixed(1),
+      ocUTI:(m.uti/divisor).toFixed(1),
+      ocUI:(m.ui/divisor).toFixed(1),
+      diasDoMes:divisor,eMesAtual:eMesAtual};
   });
   var maxOcup=Math.max.apply(null,ocup6.map(function(m){return parseFloat(m.ocTotal)||0;}));
 
@@ -1335,7 +1341,7 @@ function renderRelatorio(){
     html+='<div style="flex:1;text-align:center;font-size:9px;color:var(--red);">'+m.ocUTI+'</div>';
   });
   html+='</div>';
-  html+='<div style="text-align:center;font-size:9px;color:var(--gray);margin-top:2px;">ocupação UTI média/dia</div>';
+  html+='<div style="text-align:center;font-size:9px;color:var(--gray);margin-top:2px;">ocupação UTI média/dia · * mês em curso (até hoje)</div>';
   html+='</div>';
 
   // Gráfico UTI vs UI últimos 6 meses
