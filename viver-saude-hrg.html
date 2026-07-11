@@ -1120,6 +1120,7 @@ function renderRelatorio(){
     var d=p.dataAlta?diffDays(p.dataInternamento,p.dataAlta):diffDays(p.dataInternamento);
     return d>10;
   });
+  var altaPermInternados=altaPerm.filter(function(p){return !p.dataAlta;}).length;
 
   // Ocupação média diária do período
   var diasPeriodo=Math.max(1,Math.round((fimMes-inicioMes)/86400000));
@@ -1227,7 +1228,7 @@ function renderRelatorio(){
   html+=mkKpi("% diárias UTI",pctUTI,"var(--red)","pctuti");
   html+='<div class="card kpi-card" style="background:linear-gradient(135deg,#e0f2fe,#f0f9ff);"><div class="kpi-val" style="color:#0369a1;">'+ocupacaoMedia+'</div><div class="kpi-lbl">Ocup. média/dia</div></div>';
   html+='<div class="card kpi-card" style="background:linear-gradient(135deg,#fee2e2,#fff5f5);"><div class="kpi-val" style="color:var(--red);">'+ocupacaoUTIMedia+'</div><div class="kpi-lbl">Ocup. UTI/dia</div></div>';
-  html+=mkKpi("Alta permanência",altaPerm.length,"#7c3aed","altaperm");
+  html+=mkKpi("Alta permanência",altaPerm.length+(altaPermInternados>0?' ('+altaPermInternados+' intern.)':''),"#7c3aed","altaperm");
   html+=mkKpi("Eventos adversos",comEv.length+" ("+taxaEv+")","var(--amber)","ev");
   html+=mkKpi("Ressonâncias",comRess.length,"#9a3412","ress");
   html+=mkKpi("Proc. alto custo",comProc.length,"#9a3412","proc");
