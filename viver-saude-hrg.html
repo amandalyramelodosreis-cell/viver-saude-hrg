@@ -87,7 +87,7 @@ button{font-family:'DM Sans',Arial,sans-serif;cursor:pointer;border:none;
     <div style="display:flex;flex-direction:column;gap:10px;">
       <div><label>Data da alta</label><input type="date" id="modal-alta-data"/></div>
       <div><label>Dias em UTI</label><input type="number" id="modal-dias-uti" placeholder="0" min="0"/></div>
-      <div><label>Evento adverso evitável</label><input type="text" id="modal-ev" placeholder="Descreva ou deixe em branco"/></div>
+      <div><label>Evento adverso evitável</label><input type="text" id="modal-ev" placeholder="Descreva ou deixe em branco"/><div id="modal-ev-hint" style="font-size:11px;color:var(--teal);margin-top:3px;"></div></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px;">
       <button class="btn bg" style="flex:1;" id="modal-alta-cancel">Cancelar</button>
@@ -224,6 +224,7 @@ var S = {
   tab:"censo", subTab:"internados",
   editing:null, editingConc:null, discharging:null,
   filterSetor:"Todos", filterPend:false, filterSearch:"", filterPerm:0, filterEsp:"", filterTipo:"",
+  filterConcPerm:0, filterConcEv:false, filterConcProc:false,
   dSearch:"", rMes:null, rAno:null, rFrom:"", rTo:"", rMode:"mes", detalhe:null,
   openCards:{}, formEsps:[], novoConcluido:false
 };
@@ -265,7 +266,7 @@ function chk(id){ return el(id)?el(id).checked:false; }
 function semaforo(dias){ if(dias>=15) return "sem-vermelho"; if(dias>=10) return "sem-amarelo"; return ""; }
 function isEv(v){ var s=String(v||"").trim().toLowerCase(); return s&&s!=="nao"&&s!=="não"&&s!=="0"&&s!=="na"&&s!=="false"; }
 
-var ESPS=["Cardiologia","Clínica Médica","Neurologia","Ortopedia","Obstetrícia","Urologia","Ginecologia","Oncologia","Nefrologia","Pneumologia","Gastroenterologia","Infectologia","Pediatria","Cirurgia Geral","Cirurgia Vascular","Cirurgia Torácica","Cirurgia de Cabeça e Pescoço","Bucomaxilofacial","Psiquiatria","Outro"];
+var ESPS=["Clínica Médica","Ginecologia","Obstetrícia","Ortopedia","Urologia","Pediatria","Nefrologia","Neurologia","Cardiologia","Psiquiatria"];
 var TIPOS_INT=["Urgência","Eletivo","Não informado"];
 var MESES=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 var USERS=[
@@ -319,7 +320,7 @@ function updateHeaderSub(txt){
 }
 function renderTabs(){
   var isMod=S.session&&S.session.role==="moderadora";
-  var tabs=[{k:"censo",l:"📋 Censo"},{k:"diario",l:"📱 Diário"}];
+  var tabs=[{k:"censo",l:"📋 Censo"},{k:"diario",l:"📱 Diário"},{k:"diario-cm",l:"📱 Clínica Médica"}];
   tabs.push({k:"novo",l:"+ Internação"});
   tabs.push({k:"relatorio",l:"📊 Relatórios"});
   var html=tabs.map(function(t){
@@ -343,16 +344,19 @@ function renderContent(){
   if(S.tab==="novo"||S.editing)        renderForm();
   else if(S.tab==="relatorio")          renderRelatorio();
   else if(S.tab==="diario")             renderCensoDiario();
+  else if(S.tab==="diario-cm")          renderCensoDiario(true);
   else                                   renderCenso();
 }
 
 // ══════════════════════════════════════════
 // CENSO DIÁRIO
 // ══════════════════════════════════════════
-function renderCensoDiario(){
+function renderCensoDiario(soClinicaMedica){
   var now=new Date();
   var dateStr=now.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"2-digit",year:"numeric"});
-  var allAtivos=S.active.slice().sort(sortLeitoPriority);
+  var baseAtivos=S.active;
+  if(soClinicaMedica) baseAtivos=S.active.filter(function(p){ return (p.especialidades||[]).indexOf("Clínica Médica")>=0; });
+  var allAtivos=baseAtivos.slice().sort(sortLeitoPriority);
   var uti=allAtivos.filter(function(p){return p.setor==="UTI";});
   var ui=allAtivos.filter(function(p){return p.setor!=="UTI";});
 
@@ -510,7 +514,12 @@ function renderCenso(){
     }
     return true;
   });
-  var dischSorted=S.discharged.slice().sort(function(a,b){return(b.dataAlta||"").localeCompare(a.dataAlta||"");});
+  var dischSorted=S.discharged.filter(function(p){
+    if(S.filterConcPerm>0&&(Number(p.diasTotal)||0)<S.filterConcPerm) return false;
+    if(S.filterConcEv&&!isEv(p.eventoAdverso)) return false;
+    if(S.filterConcProc&&!p.procedimentoAlto) return false;
+    return true;
+  }).slice().sort(function(a,b){return(b.dataAlta||"").localeCompare(a.dataAlta||"");});
   var fd=dischSorted.filter(function(p){
     if(!S.dSearch) return true;
     var q=S.dSearch.toLowerCase();
@@ -545,8 +554,16 @@ function renderCenso(){
     html+='<select id="fperm" onchange="setFilterPerm(this.value)" style="flex:1;min-width:120px;"><option value="0"'+(S.filterPerm===0?" selected":"")+'>⏱ Permanência</option><option value="5"'+(S.filterPerm===5?" selected":"")+'>+5 dias</option><option value="10"'+(S.filterPerm===10?" selected":"")+'>+10 dias</option><option value="15"'+(S.filterPerm===15?" selected":"")+'>+15 dias</option></select>';
     html+='</div>';
     html+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">';
-    html+='<select id="fesp" onchange="setFilterEsp(this.value)" style="flex:2;min-width:160px;"><option value=""'+(S.filterEsp===""?" selected":"")+'>🩺 Todas especialidades</option>';
-    ESPS.forEach(function(e){ html+='<option value="'+e+'"'+(S.filterEsp===e?" selected":"")+'>'+e+'</option>'; });
+    // Contador por especialidade
+    var countByEsp={};
+    S.active.forEach(function(p){ (p.especialidades||[]).forEach(function(e){ countByEsp[e]=(countByEsp[e]||0)+1; }); });
+    var totalFiltrado=S.filterEsp?fa.length:S.active.length;
+    html+='<select id="fesp" onchange="setFilterEsp(this.value)" style="flex:2;min-width:160px;">';
+    html+='<option value=""'+(S.filterEsp===""?" selected":"")+'>🩺 Todas especialidades ('+S.active.length+')</option>';
+    ESPS.forEach(function(e){
+      var cnt=countByEsp[e]||0;
+      if(cnt>0||S.filterEsp===e) html+='<option value="'+e+'"'+(S.filterEsp===e?" selected":"")+'>'+e+' ('+cnt+')</option>';
+    });
     html+='</select>';
     html+='<select id="ftipo" onchange="setFilterTipo(this.value)" style="flex:1;min-width:140px;"><option value=""'+(S.filterTipo===""?" selected":"")+'>🏥 Todos tipos</option><option value="Urgência"'+(S.filterTipo==="Urgência"?" selected":"")+'>Urgência</option><option value="Eletivo"'+(S.filterTipo==="Eletivo"?" selected":"")+'>Eletivo</option></select>';
     html+='</div>';
@@ -674,8 +691,12 @@ function iniciarAlta(id){
   S.discharging=p;
   el("modal-alta-nome").textContent=p.nome;
   el("modal-alta-data").value=tod();
-  el("modal-dias-uti").value="0";
-  el("modal-ev").value="";
+  el("modal-dias-uti").value=p.diasUTI||"0";
+  // Puxar evento adverso já registrado no censo
+  var evExist=p.eventoAdverso&&isEv(p.eventoAdverso)?p.eventoAdverso:"";
+  el("modal-ev").value=evExist;
+  var hint=el("modal-ev-hint");
+  if(hint) hint.textContent=evExist?"⚠ Evento já registrado no censo: "+evExist:"";
   el("modal-alta").classList.remove("hidden");
 }
 el("modal-alta-cancel").addEventListener("click",function(){el("modal-alta").classList.add("hidden");S.discharging=null;});
@@ -800,11 +821,7 @@ function renderForm(){
   html+='<div><label>Evento adverso evitável</label><input type="text" id="f-ev" value="'+esc(isEv(p.eventoAdverso)?p.eventoAdverso:"")+'" placeholder="Descreva ou deixe em branco"/></div>';
   html+='</div></div>';
 
-  html+='<div style="margin-bottom:20px;"><div class="sec-title">Prescrição Médica</div>';
-  html+='<textarea id="f-presc" rows="3" placeholder="Medicações, doses, via...">'+esc(p.prescricao||"")+'</textarea></div>';
 
-  html+='<div style="margin-bottom:20px;"><div class="sec-title">Observações</div>';
-  html+='<textarea id="f-obs" rows="3" placeholder="Notas clínicas, intercorrências...">'+esc(p.observacoes||"")+'</textarea></div>';
 
   html+='<div style="display:flex;gap:10px;">';
   html+='<button class="btn bg" style="flex:1;" onclick="cancelarForm()">Cancelar</button>';
@@ -844,7 +861,6 @@ function salvarForm(){
     ressonancia:chk("f-ress"),procedimentoAlto:chk("f-proc"),
     procedimentoDescricao:val("f-proc-desc"),
     eventoAdverso:val("f-ev").trim()||"Não",
-    prescricao:val("f-presc"),observacoes:val("f-obs"),
     diasUTI:0,diasTotal:0};
   if(S.editing){
     gsUpdate("pacientes_ativos",S.editing.id,form,function(err){
