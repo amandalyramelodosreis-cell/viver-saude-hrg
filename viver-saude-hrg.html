@@ -1280,11 +1280,16 @@ function renderRelatorio(){
         var db=b.dataAlta?diffDays(b.dataInternamento,b.dataAlta):diffDays(b.dataInternamento);
         return db-da;
       }).map(function(p){
-        var dias=p.dataAlta?diffDays(p.dataInternamento,p.dataAlta):diffDays(p.dataInternamento);
-        return'<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;">'
-          +'<div style="display:flex;justify-content:space-between;"><span style="font-weight:600;color:var(--navy);">'+esc(p.nome)+'</span>'
-          +'<span style="background:#ede9fe;color:#7c3aed;padding:1px 7px;border-radius:4px;font-weight:700;">'+dias+'d</span></div>'
-          +'<div style="color:var(--gray);margin-top:2px;font-size:11px;">'+esc(p.diagnosticoPrincipal||'')+(p.dataAlta?' · Alta: '+fmt(p.dataAlta):' · Internado')+'</div>'
+        var internado=!p.dataAlta;
+        var dias=internado?diffDays(p.dataInternamento):diffDays(p.dataInternamento,p.dataAlta);
+        return'<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;background:'+(internado?'#fefce8':'white')+';margin:0 -4px;padding:6px 4px;">'
+          +'<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">'
+          +'<span style="font-weight:600;color:var(--navy);">'+esc(p.nome)+'</span>'
+          +'<div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">'
+          +(internado?'<span style="background:#fef08a;color:#854d0e;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">🏥 INTERNADO</span>':'')
+          +'<span style="background:#ede9fe;color:#7c3aed;padding:1px 7px;border-radius:4px;font-weight:700;">'+dias+'d</span>'
+          +'</div></div>'
+          +'<div style="color:var(--gray);margin-top:2px;font-size:11px;">'+esc(p.diagnosticoPrincipal||'')+(internado?' · '+fmt(p.dataInternamento)+' → hoje':' · Alta: '+fmt(p.dataAlta))+'</div>'
           +'</div>';
       })
     );
