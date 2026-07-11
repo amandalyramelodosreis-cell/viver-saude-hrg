@@ -1094,8 +1094,13 @@ function renderRelatorio(){
   var pctUTI=totalDiariasMes>0?((totalDiasUTIMes/totalDiariasMes)*100).toFixed(1)+"%":"--";
   var total=pp.length,totalAltas=pd.length;
   var espC={};
-  pp.forEach(function(p){(p.especialidades||[]).forEach(function(e){espC[e]=(espC[e]||0)+1;});});
-  var espTop=Object.keys(espC).map(function(e){return[e,espC[e]];}).sort(function(a,b){return b[1]-a[1];});
+  pp.forEach(function(p){
+    var grupos={};
+    (p.especialidades||[]).forEach(function(e){ grupos[grupoEsp(e)]=true; });
+    Object.keys(grupos).forEach(function(g){ espC[g]=(espC[g]||0)+1; });
+  });
+  var ORDEM_ESP_TOP=["Clínica Médica","Cardiologia","Cirúrgico","GO","Pediatria","Psiquiatria"];
+  var espTop=ORDEM_ESP_TOP.filter(function(g){return espC[g]>0;}).map(function(g){return[g,espC[g]];});
   var comEv=pp.filter(function(p){return isEv(p.eventoAdverso);});
   var comUTI=pp.filter(function(p){return Number(p.diasUTI)>0;});
   var comRess=pp.filter(function(p){return p.ressonancia===true||p.ressonancia==="true"||p.ressonancia==="TRUE";});
