@@ -579,6 +579,11 @@ function renderCenso(){
   } else {
     if(isMod) html+='<button class="btn bs" style="width:100%;margin-bottom:12px;" onclick="S.novoConcluido=!S.novoConcluido;S.editingConc=null;renderCenso();">'+(S.novoConcluido?"✕ Cancelar":"+ Cadastrar paciente com alta")+'</button>';
     if(S.novoConcluido&&isMod) html+=renderFormConcluido();
+    html+='<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">';
+    html+='<select onchange="S.filterConcPerm=Number(this.value);renderCenso();" style="flex:1;min-width:130px;"><option value="0"'+(S.filterConcPerm===0?" selected":"")+'>⏱ Permanência</option><option value="10"'+(S.filterConcPerm===10?" selected":"")+'>+10 dias</option><option value="15"'+(S.filterConcPerm===15?" selected":"")+'>+15 dias</option><option value="30"'+(S.filterConcPerm===30?" selected":"")+'>+30 dias</option></select>';
+    html+='<button onclick="S.filterConcEv=!S.filterConcEv;renderCenso();" style="padding:8px 12px;border-radius:8px;border:2px solid;font-size:12px;cursor:pointer;background:'+(S.filterConcEv?"#fee2e2":"white")+';color:'+(S.filterConcEv?"var(--red)":"var(--gray)")+';border-color:'+(S.filterConcEv?"var(--red)":"var(--border)")+';">⚠ Evento adverso</button>';
+    html+='<button onclick="S.filterConcProc=!S.filterConcProc;renderCenso();" style="padding:8px 12px;border-radius:8px;border:2px solid;font-size:12px;cursor:pointer;background:'+(S.filterConcProc?"#ede9fe":"white")+';color:'+(S.filterConcProc?"#7c3aed":"var(--gray)")+';border-color:'+(S.filterConcProc?"#7c3aed":"var(--border)")+';">💎 Alto custo</button>';
+    html+='</div>';
     html+='<div style="margin-bottom:12px;"><input type="text" id="dsearch" placeholder="🔍 Buscar..." value="'+esc(S.dSearch)+'" oninput="setDSearch(this.value)"/></div>';
     html+='<div class="grid4" style="margin-bottom:16px;">';
     html+='<div class="card minikpi"><div style="font-size:18px;font-family:serif;color:var(--teal);font-weight:700;">'+S.discharged.length+'</div><div style="font-size:10px;color:var(--gray);margin-top:2px;">Total altas</div></div>';
@@ -962,14 +967,19 @@ function renderRelatorio(){
   if(S.rMode==="custom"&&S.rFrom&&S.rTo){
     var cf=new Date(S.rFrom+"T00:00:00"),ct=new Date(S.rTo+"T23:59:59");
     pp=all.filter(function(p){
-      if(!p.dataInternamento)return false;
-      var din=new Date(p.dataInternamento+"T12:00:00");
-      var dalt=p.dataAlta?new Date(p.dataAlta+"T12:00:00"):new Date();
+      if(!p.dataInternamento) return false;
+      var dinStr=toISO(p.dataInternamento);
+      if(!dinStr) return false;
+      var din=new Date(dinStr+"T12:00:00");
+      var daltStr=p.dataAlta?toISO(p.dataAlta):null;
+      var dalt=daltStr?new Date(daltStr+"T12:00:00"):new Date();
       return din<=ct&&dalt>=cf;
     });
     pd=S.discharged.filter(function(p){
-      if(!p.dataAlta)return false;
-      var d=new Date(p.dataAlta+"T12:00:00");
+      if(!p.dataAlta) return false;
+      var daltStr=toISO(p.dataAlta);
+      if(!daltStr) return false;
+      var d=new Date(daltStr+"T12:00:00");
       return d>=cf&&d<=ct;
     });
     inicioMes=cf;fimMes=ct;
@@ -978,14 +988,21 @@ function renderRelatorio(){
     var mes=S.rMes,ano=S.rAno;
     inicioMes=new Date(ano,mes,1);fimMes=new Date(ano,mes+1,0,23,59,59);
     pp=all.filter(function(p){
-      if(!p.dataInternamento)return false;
-      var din=new Date(p.dataInternamento+"T12:00:00");
-      var dalt=p.dataAlta?new Date(p.dataAlta+"T12:00:00"):new Date();
-      return din<=fimMes&&dalt>=inicioMes;
+      if(!p.dataInternamento) return false;
+      var dinStr=toISO(p.dataInternamento);
+      if(!dinStr) return false;
+      var din=new Date(dinStr+"T12:00:00");
+      // Paciente sem alta: considera alta hoje (ainda internado)
+      var daltStr=p.dataAlta?toISO(p.dataAlta):null;
+      var dalt=daltStr?new Date(daltStr+"T12:00:00"):new Date();
+      // Inclui se houve sobreposição com o mês: internado antes do fim E alta após o início
+      return din<=fimMes && dalt>=inicioMes;
     });
     pd=S.discharged.filter(function(p){
-      if(!p.dataAlta)return false;
-      var d=new Date(p.dataAlta+"T12:00:00");
+      if(!p.dataAlta) return false;
+      var daltStr=toISO(p.dataAlta);
+      if(!daltStr) return false;
+      var d=new Date(daltStr+"T12:00:00");
       return d.getMonth()===mes&&d.getFullYear()===ano;
     });
     tituloRel=MESES[S.rMes]+" "+S.rAno;
