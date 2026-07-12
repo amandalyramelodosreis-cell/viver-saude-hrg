@@ -1071,26 +1071,38 @@ function renderRelatorio(){
   }
   var maxBar=Math.max.apply(null,graficoMeses.map(function(m){return m.uti+m.ui;}));
 
+  var eMesAtualRel=(mes===hoje.getMonth()&&ano===hoje.getFullYear());
+  var limiteHoje=eMesAtualRel?hoje:fimMes;
+
+  // Diárias por contagem precisa: inclui dia entrada, exclui dia saída
   var totalDiariasMes=0,totalDiasUTIMes=0;
-  S.discharged.forEach(function(p){
-    if(!p.dataInternamento||!p.dataAlta)return;
-    var din=new Date(p.dataInternamento+"T12:00:00");
-    var dalt=new Date(p.dataAlta+"T12:00:00");
-    if(din>fimMes||dalt<inicioMes)return;
+  S.discharged.concat(S.active).forEach(function(p){
+    if(!p.dataInternamento) return;
+    var dinStr=toISO(p.dataInternamento);
+    if(!dinStr) return;
+    var din=new Date(dinStr+"T12:00:00");
+    if(din>fimMes) return;
+    var dalt;
+    if(p.dataAlta){
+      var ds=toISO(p.dataAlta);
+      if(!ds) return;
+      dalt=new Date(ds+"T12:00:00");
+    } else {
+      dalt=limiteHoje;
+    }
+    if(dalt<inicioMes) return;
     var inicio=din<inicioMes?inicioMes:din;
-    var fim=dalt>fimMes?fimMes:dalt;
-    var dias=Math.max(0,Math.floor((fim-inicio)/86400000));
+    var fim=dalt<limiteHoje?dalt:limiteHoje;
+    var dias=Math.max(0,Math.floor((fim-inicio)/86400000)+1);
     totalDiariasMes+=dias;
-    if(Number(p.diasUTI)>0) totalDiasUTIMes+=Math.round(dias*(Number(p.diasUTI)||0)/(Number(p.diasTotal)||1));
-  });
-  S.active.forEach(function(p){
-    if(!p.dataInternamento)return;
-    var din=new Date(p.dataInternamento+"T12:00:00");
-    if(din>fimMes)return;
-    var inicio=din<inicioMes?inicioMes:din;
-    var dias=Math.max(0,Math.floor((fimMes-inicio)/86400000));
-    totalDiariasMes+=dias;
-    if(p.setor==="UTI") totalDiasUTIMes+=dias;
+    if(p.dataAlta){
+      if(Number(p.diasUTI)>0){
+        var propUTI=Number(p.diasUTI)/(Number(p.diasTotal)||1);
+        totalDiasUTIMes+=Math.round(dias*propUTI);
+      }
+    } else {
+      if(p.setor==="UTI") totalDiasUTIMes+=dias;
+    }
   });
 
   var pctUTI=totalDiariasMes>0?((totalDiasUTIMes/totalDiariasMes)*100).toFixed(1)+"%":"--";
@@ -1125,7 +1137,7 @@ function renderRelatorio(){
   var altaPermInternados=altaPerm.filter(function(p){return !p.dataAlta;}).length;
 
   // Ocupação média diária do período
-  var diasPeriodo=Math.max(1,Math.round((fimMes-inicioMes)/86400000));
+  var diasPeriodo=eMesAtualRel?hoje.getDate():Math.max(1,Math.round((fimMes-inicioMes)/86400000)+1);
   var ocupacaoMedia=(totalDiariasMes/diasPeriodo).toFixed(1);
   var ocupacaoUTIMedia=(totalDiasUTIMes/diasPeriodo).toFixed(1);
 
