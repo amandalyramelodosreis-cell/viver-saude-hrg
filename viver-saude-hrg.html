@@ -976,6 +976,45 @@ function salvarConcluido(){
 function toggleDetalhe(k){S.detalhe=(S.detalhe===k?null:k);renderRelatorio();}
 function setRMode(m){S.rMode=m;S.detalhe=null;renderRelatorio();}
 
+
+// ── Cálculo de diárias padronizado ───────────────────────────
+function calcDiarias(inicioP, fimP, eMesAtual) {
+  var agora = new Date();
+  var limite = eMesAtual ? new Date(agora.getFullYear(),agora.getMonth(),agora.getDate(),23,59,59) : fimP;
+  var total = 0, uti = 0;
+  S.discharged.concat(S.active).forEach(function(p){
+    if(!p.dataInternamento) return;
+    var dinStr = toISO(p.dataInternamento);
+    if(!dinStr) return;
+    var din = new Date(dinStr+"T12:00:00");
+    if(din > fimP) return;
+    var dalt;
+    if(p.dataAlta){
+      var ds = toISO(p.dataAlta);
+      if(!ds) return;
+      dalt = new Date(ds+"T12:00:00");
+    } else {
+      dalt = limite;
+    }
+    if(dalt < inicioP) return;
+    var ini = din < inicioP ? inicioP : din;
+    var fim = dalt < limite ? dalt : limite;
+    var dias = Math.max(0, Math.floor((fim-ini)/86400000) + 1);
+    total += dias;
+    if(p.dataAlta){
+      if(Number(p.diasUTI)>0){
+        var prop = Number(p.diasUTI)/(Number(p.diasTotal)||1);
+        uti += Math.round(dias*prop);
+      }
+    } else {
+      if(p.setor==="UTI") uti += dias;
+    }
+  });
+  var agora2 = new Date();
+  var divisor = eMesAtual ? agora2.getDate() : (Math.floor((fimP-inicioP)/86400000)+1);
+  return {total:total, uti:uti, divisor:divisor,
+          media:(total/divisor).toFixed(1), mediaUTI:(uti/divisor).toFixed(1)};
+}
 function renderRelatorio(){
   var now=new Date();
   var hoje=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59);
@@ -1075,42 +1114,9 @@ function renderRelatorio(){
   }
   var maxBar=Math.max.apply(null,graficoMeses.map(function(m){return m.uti+m.ui;}));
 
-  // No modo custom, mes/ano podem não estar definidos
-  var _mes=typeof mes!=="undefined"?mes:hoje.getMonth();
-  var _ano=typeof ano!=="undefined"?ano:hoje.getFullYear();
-  var eMesAtualRel=(_mes===hoje.getMonth()&&_ano===hoje.getFullYear());
-  var limiteHoje=eMesAtualRel?hoje:fimMes;
-
-  // Diárias por contagem precisa: inclui dia entrada, exclui dia saída
-  var totalDiariasMes=0,totalDiasUTIMes=0;
-  S.discharged.concat(S.active).forEach(function(p){
-    if(!p.dataInternamento) return;
-    var dinStr=toISO(p.dataInternamento);
-    if(!dinStr) return;
-    var din=new Date(dinStr+"T12:00:00");
-    if(din>fimMes) return;
-    var dalt;
-    if(p.dataAlta){
-      var ds=toISO(p.dataAlta);
-      if(!ds) return;
-      dalt=new Date(ds+"T12:00:00");
-    } else {
-      dalt=limiteHoje;
-    }
-    if(dalt<inicioMes) return;
-    var inicio=din<inicioMes?inicioMes:din;
-    var fim=dalt<limiteHoje?dalt:limiteHoje;
-    var dias=Math.max(0,Math.floor((fim-inicio)/86400000)+1);
-    totalDiariasMes+=dias;
-    if(p.dataAlta){
-      if(Number(p.diasUTI)>0){
-        var propUTI=Number(p.diasUTI)/(Number(p.diasTotal)||1);
-        totalDiasUTIMes+=Math.round(dias*propUTI);
-      }
-    } else {
-      if(p.setor==="UTI") totalDiasUTIMes+=dias;
-    }
-  });
+  var eMesAtualRel=(typeof mes!=="undefined"&&typeof ano!=="undefined")?(mes===hoje.getMonth()&&ano===hoje.getFullYear()):true;
+  var _cd=calcDiarias(inicioMes,fimMes,eMesAtualRel);
+  var totalDiariasMes=_cd.total,totalDiasUTIMes=_cd.uti;
 
   var pctUTI=totalDiariasMes>0?((totalDiasUTIMes/totalDiariasMes)*100).toFixed(1)+"%":"--";
   var total=pp.length,totalAltas=pd.length;
@@ -1144,9 +1150,9 @@ function renderRelatorio(){
   var altaPermInternados=altaPerm.filter(function(p){return !p.dataAlta;}).length;
 
   // Ocupação média diária do período
-  var diasPeriodo=eMesAtualRel?hoje.getDate():Math.max(1,Math.floor((fimMes-inicioMes)/86400000)+1);
-  var ocupacaoMedia=(totalDiariasMes/diasPeriodo).toFixed(1);
-  var ocupacaoUTIMedia=(totalDiasUTIMes/diasPeriodo).toFixed(1);
+  var diasPeriodo=_cd.divisor;
+  var ocupacaoMedia=_cd.media;
+  var ocupacaoUTIMedia=_cd.mediaUTI;
 
   // Taxa de readmissão (readm/altas)
   var taxaReadm=totalAltas>0?((comReadm.length/totalAltas)*100).toFixed(1)+"%":"--";
@@ -1521,24 +1527,9 @@ function renderPD1000(){
     return din<=fimMes&&dalt>=inicioMes;
   });
 
-  // Calcular diárias reais do mês — mesma lógica do relatório
-  // Para cada dia do período, conta quantos pacientes estavam internados
-  var limFim=eMesAtual?hoje:fimMes;
-  var diasReais=0;
-  ppMes.forEach(function(p){
-    var dinStr=toISO(p.dataInternamento);
-    var daltStr=p.dataAlta?toISO(p.dataAlta):null;
-    if(!dinStr) return;
-    var din=new Date(dinStr+"T12:00:00");
-    var dalt=daltStr?new Date(daltStr+"T12:00:00"):limFim;
-    // Intersecção com o período do mês até hoje
-    var ini=din>inicioMes?din:inicioMes;
-    var fim=dalt<limFim?dalt:limFim;
-    var d=Math.max(0,Math.floor((fim-ini)/86400000)+1);
-    diasReais+=d;
-  });
-
-  var ocupReal=diasReais/diasDecorridos;
+  var _cdPD=calcDiarias(inicioMes,fimMes,eMesAtual);
+  var diasReais=_cdPD.total;
+  var ocupReal=parseFloat(_cdPD.media);
   var pctMeta=metaDiaria>0?((ocupReal/metaDiaria)*100).toFixed(1):0;
   var naFaixa=ocupReal>=metaDiaria*0.9&&ocupReal<=metaDiaria*1.1;
   var abaixo=ocupReal<metaDiaria*0.9;
