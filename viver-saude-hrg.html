@@ -1573,6 +1573,10 @@ function renderPD1000(){
   [2025,2026,2027].forEach(function(a){html+='<option value="'+a+'"'+(pd.ano===a?' selected':'')+'>'+a+'</option>';});
   html+='</select></div>';
   html+='</div>';
+  html+='<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;font-size:11px;color:#166534;margin-top:10px;">';
+  html+='<b>📊 Referência SBAM</b> — Operadoras com rede própria: <b>0,40 a 0,45 PD/1.000 vidas/dia</b><br>';
+  html+='Com '+pd.vidas.toLocaleString("pt-BR")+' vidas → meta de <b>'+(pd.vidas*0.40/1000).toFixed(0)+' a '+(pd.vidas*0.45/1000).toFixed(0)+' pacientes/dia</b> para sinistralidade sustentável.';
+  html+='</div>';
   html+='</div>';
 
   // KPI principal
@@ -1593,16 +1597,39 @@ function renderPD1000(){
   html+='<div style="font-size:10px;color:#94a3b8;">pac/dia</div>';
   html+='</div>';
   html+='</div>';
-  // Barra de progresso
+  // Benchmark SBAM
+  var sbamMin=pd.vidas*0.40/1000;
+  var sbamMax=pd.vidas*0.45/1000;
+  var acimaSBAM=ocupReal>sbamMax;
+  var naSBAM=ocupReal>=sbamMin&&ocupReal<=sbamMax;
+  var corSBAM=naSBAM?"#86efac":acimaSBAM?"#fca5a5":"#fde68a";
+  var statusSBAM=naSBAM?"✅ Dentro da faixa SBAM":acimaSBAM?"⚠️ Acima da faixa SBAM ("+ocupReal.toFixed(1)+" vs meta "+sbamMax.toFixed(1)+")":"⬇ Abaixo da faixa SBAM";
+
+  // Barra de progresso vs meta configurada
   html+='<div style="margin-top:16px;">';
   html+='<div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;margin-bottom:6px;"><span>0</span><span>Meta: '+metaDiaria.toFixed(1)+'</span><span>+'+(metaDiaria*1.2).toFixed(1)+'</span></div>';
   html+='<div style="background:rgba(255,255,255,.15);border-radius:99px;height:12px;position:relative;">';
   var barW=Math.min(Math.max(parseFloat(pctMeta),0),120);
   html+='<div style="height:12px;border-radius:99px;background:'+cor+';width:'+barW+'%;transition:width .5s;"></div>';
-  // Marcador da meta (100%)
   html+='<div style="position:absolute;top:-4px;left:calc(100%/1.2);width:2px;height:20px;background:white;border-radius:2px;opacity:.5;"></div>';
   html+='</div>';
-  html+='<div style="text-align:center;font-size:11px;color:'+cor+';font-weight:700;margin-top:6px;">'+pctMeta+'% da meta</div>';
+  html+='<div style="text-align:center;font-size:11px;color:'+cor+';font-weight:700;margin-top:6px;">'+pctMeta+'% da meta configurada</div>';
+  html+='</div>';
+
+  // Barra SBAM
+  html+='<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1);">';
+  html+='<div style="font-size:10px;color:#94a3b8;margin-bottom:6px;">Referência SBAM (rede própria): '+sbamMin.toFixed(1)+' – '+sbamMax.toFixed(1)+' pac/dia</div>';
+  var maxSBAMBar=Math.max(ocupReal,sbamMax)*1.3;
+  var wReal=Math.min((ocupReal/maxSBAMBar*100),100);
+  var wSBAMMin=sbamMin/maxSBAMBar*100;
+  var wSBAMMax=sbamMax/maxSBAMBar*100;
+  html+='<div style="background:rgba(255,255,255,.1);border-radius:99px;height:10px;position:relative;margin-bottom:6px;">';
+  // Faixa SBAM (verde)
+  html+='<div style="position:absolute;left:'+wSBAMMin+'%;width:'+(wSBAMMax-wSBAMMin)+'%;height:10px;background:#86efac;border-radius:99px;opacity:.6;" title="Faixa SBAM"></div>';
+  // Real
+  html+='<div style="position:absolute;left:0;width:'+wReal+'%;height:10px;background:'+cor+';border-radius:99px;opacity:.9;" title="Real: '+ocupReal.toFixed(1)+'"></div>';
+  html+='</div>';
+  html+='<div style="font-size:11px;color:'+corSBAM+';font-weight:700;">'+statusSBAM+'</div>';
   html+='</div>';
   html+='</div>';
 
