@@ -226,7 +226,8 @@ var S = {
   filterSetor:"Todos", filterPend:false, filterSearch:"", filterPerm:0, filterEsp:"", filterTipo:"",
   filterConcPerm:0, filterConcEv:false, filterConcProc:false,
   dSearch:"", rMes:null, rAno:null, rFrom:"", rTo:"", rMode:"mes", detalhe:null,
-  openCards:{}, formEsps:[], novoConcluido:false
+  openCards:{}, formEsps:[], novoConcluido:false,
+  pd:{vidas:65000,indice:150,mes:new Date().getMonth()+1,ano:new Date().getFullYear()}
 };
 var _searchTimer=null;
 function setSearch(val){
@@ -333,7 +334,7 @@ function updateHeaderSub(txt){
 }
 function renderTabs(){
   var isMod=S.session&&S.session.role==="moderadora";
-  var tabs=[{k:"censo",l:"📋 Censo"},{k:"diario",l:"📱 Diário"},{k:"diario-cm",l:"📱 Clínica Médica"}];
+  var tabs=[{k:"censo",l:"📋 Censo"},{k:"diario",l:"📱 Diário"},{k:"diario-cm",l:"📱 Clínica Médica"},{k:"pd1000",l:"🎯 PD/1000"}];
   tabs.push({k:"novo",l:"+ Internação"});
   tabs.push({k:"relatorio",l:"📊 Relatórios"});
   var html=tabs.map(function(t){
@@ -358,6 +359,7 @@ function renderContent(){
   else if(S.tab==="relatorio")          renderRelatorio();
   else if(S.tab==="diario")             renderCensoDiario();
   else if(S.tab==="diario-cm")          renderCensoDiario(true);
+  else if(S.tab==="pd1000")             renderPD1000();
   else                                   renderCenso();
 }
 
@@ -1471,6 +1473,149 @@ function tentarLogin(){
 }
 el("botao-entrar").addEventListener("click",tentarLogin);
 el("campo-senha").addEventListener("keydown",function(e){if(e.key==="Enter")tentarLogin();});
+function renderPD1000(){
+  var MESES_LABEL=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  var pd=S.pd;
+
+  // Calcular meta
+  var metaMensalDias=(pd.vidas*pd.indice/1000)/12;
+  var diasDoMes=new Date(pd.ano,pd.mes,0).getDate();
+  var metaDiaria=metaMensalDias/diasDoMes;
+
+  // Buscar ocupação real do mês selecionado
+  var anoMes=pd.ano+"-"+String(pd.mes).padStart(2,"0");
+  var inicioMes=new Date(pd.ano,pd.mes-1,1);
+  var fimMes=new Date(pd.ano,pd.mes,0,23,59,59);
+  var hoje=new Date();
+  var eMesAtual=(pd.ano===hoje.getFullYear()&&pd.mes===(hoje.getMonth()+1));
+  var diasDecorridos=eMesAtual?hoje.getDate():diasDoMes;
+
+  var all=S.discharged.concat(S.active);
+  var ppMes=all.filter(function(p){
+    if(!p.dataInternamento) return false;
+    var dinStr=toISO(p.dataInternamento);
+    if(!dinStr) return false;
+    var din=new Date(dinStr+"T12:00:00");
+    var dalt;
+    if(p.dataAlta){var ds=toISO(p.dataAlta);if(!ds)return false;dalt=new Date(ds+"T12:00:00");}
+    else dalt=new Date();
+    return din<=fimMes&&dalt>=inicioMes;
+  });
+
+  // Calcular diárias reais do mês
+  var diasReais=0;
+  ppMes.forEach(function(p){
+    var dinStr=toISO(p.dataInternamento);
+    var daltStr=p.dataAlta?toISO(p.dataAlta):null;
+    var din=new Date(dinStr+"T12:00:00");
+    var dalt=daltStr?new Date(daltStr+"T12:00:00"):new Date();
+    var ini=din<inicioMes?inicioMes:din;
+    var fim=dalt>fimMes?fimMes:dalt;
+    fim=fim>hoje?hoje:fim;
+    var d=Math.max(0,Math.round((fim-ini)/86400000)+1);
+    diasReais+=d;
+  });
+
+  var ocupReal=diasReais/diasDecorridos;
+  var pctMeta=metaDiaria>0?((ocupReal/metaDiaria)*100).toFixed(1):0;
+  var naFaixa=ocupReal>=metaDiaria*0.9&&ocupReal<=metaDiaria*1.1;
+  var abaixo=ocupReal<metaDiaria*0.9;
+  var cor=abaixo?"var(--amber)":naFaixa?"var(--green)":"var(--red)";
+  var status=abaixo?"⬇ Abaixo da meta":naFaixa?"✅ Na meta":"⬆ Acima da meta";
+
+  // Projeção para o fim do mês (se mês atual)
+  var projFimMes=eMesAtual?(ocupReal*diasDoMes).toFixed(0):null;
+
+  var html='<div style="padding:0 0 24px;">';
+
+  // Formulário de configuração
+  html+='<div class="card" style="padding:16px;margin-bottom:12px;">';
+  html+='<div style="font-weight:700;font-size:13px;color:var(--navy);margin-bottom:12px;">⚙️ Parâmetros</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">';
+  html+='<div><label style="font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;">Nº de Vidas</label>';
+  html+='<input type="number" value="'+pd.vidas+'" onchange="S.pd.vidas=Number(this.value);renderPD1000();" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;margin-top:4px;box-sizing:border-box;"/></div>';
+  html+='<div><label style="font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;">Índice PD/1000/ano</label>';
+  html+='<input type="number" step="0.1" value="'+pd.indice+'" onchange="S.pd.indice=Number(this.value);renderPD1000();" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-weight:600;margin-top:4px;box-sizing:border-box;"/></div>';
+  html+='</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">';
+  html+='<div><label style="font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;">Mês</label>';
+  html+='<select onchange="S.pd.mes=Number(this.value);renderPD1000();" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;margin-top:4px;box-sizing:border-box;">';
+  MESES_LABEL.forEach(function(m,i){html+='<option value="'+(i+1)+'"'+(pd.mes===i+1?' selected':'')+'>'+m+'</option>';});
+  html+='</select></div>';
+  html+='<div><label style="font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;">Ano</label>';
+  html+='<select onchange="S.pd.ano=Number(this.value);renderPD1000();" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;font-size:13px;margin-top:4px;box-sizing:border-box;">';
+  [2025,2026,2027].forEach(function(a){html+='<option value="'+a+'"'+(pd.ano===a?' selected':'')+'>'+a+'</option>';});
+  html+='</select></div>';
+  html+='</div>';
+  html+='</div>';
+
+  // KPI principal
+  html+='<div class="card" style="padding:20px;margin-bottom:12px;background:linear-gradient(135deg,#0d2137,#0a4060);border-radius:12px;">';
+  html+='<div style="text-align:center;margin-bottom:16px;">';
+  html+='<div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">'+MESES_LABEL[pd.mes-1]+' '+pd.ano+(eMesAtual?' · até dia '+diasDecorridos:'')+'</div>';
+  html+='<div style="font-size:11px;color:'+cor+';font-weight:700;letter-spacing:1px;">'+status+'</div>';
+  html+='</div>';
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:center;">';
+  html+='<div style="background:rgba(255,255,255,.08);border-radius:10px;padding:14px;">';
+  html+='<div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">META diária</div>';
+  html+='<div style="font-size:32px;font-weight:700;font-family:serif;color:white;">'+metaDiaria.toFixed(1)+'</div>';
+  html+='<div style="font-size:10px;color:#94a3b8;">pac/dia</div>';
+  html+='</div>';
+  html+='<div style="background:rgba(255,255,255,.08);border-radius:10px;padding:14px;">';
+  html+='<div style="font-size:10px;color:#94a3b8;margin-bottom:4px;">REAL '+(eMesAtual?'(parcial)':'')+'</div>';
+  html+='<div style="font-size:32px;font-weight:700;font-family:serif;color:'+cor+';">'+ocupReal.toFixed(1)+'</div>';
+  html+='<div style="font-size:10px;color:#94a3b8;">pac/dia</div>';
+  html+='</div>';
+  html+='</div>';
+  // Barra de progresso
+  html+='<div style="margin-top:16px;">';
+  html+='<div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;margin-bottom:6px;"><span>0</span><span>Meta: '+metaDiaria.toFixed(1)+'</span><span>+'+(metaDiaria*1.2).toFixed(1)+'</span></div>';
+  html+='<div style="background:rgba(255,255,255,.15);border-radius:99px;height:12px;position:relative;">';
+  var barW=Math.min(Math.max(parseFloat(pctMeta),0),120);
+  html+='<div style="height:12px;border-radius:99px;background:'+cor+';width:'+barW+'%;transition:width .5s;"></div>';
+  // Marcador da meta (100%)
+  html+='<div style="position:absolute;top:-4px;left:calc(100%/1.2);width:2px;height:20px;background:white;border-radius:2px;opacity:.5;"></div>';
+  html+='</div>';
+  html+='<div style="text-align:center;font-size:11px;color:'+cor+';font-weight:700;margin-top:6px;">'+pctMeta+'% da meta</div>';
+  html+='</div>';
+  html+='</div>';
+
+  // Cards secundários
+  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">';
+  html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--teal);">'+metaMensalDias.toFixed(0)+'</div><div class="kpi-lbl">Meta PD mensal</div></div>';
+  html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--navy);">'+diasReais+'</div><div class="kpi-lbl">PD real ('+diasDecorridos+'d)</div></div>';
+  html+='<div class="card kpi-card"><div class="kpi-val" style="color:#7c3aed;">'+(pd.vidas*pd.indice/1000).toFixed(0)+'</div><div class="kpi-lbl">Meta PD anual</div></div>';
+  html+='<div class="card kpi-card"><div class="kpi-val" style="color:var(--gray);">'+ppMes.length+'</div><div class="kpi-lbl">Internações no mês</div></div>';
+  html+='</div>';
+
+  // Projeção
+  if(eMesAtual&&projFimMes){
+    var projNum=parseFloat(projFimMes);
+    var metaNum=metaMensalDias;
+    var diffProj=projNum-metaNum;
+    var corProj=Math.abs(diffProj)<metaNum*0.1?"var(--green)":diffProj<0?"var(--amber)":"var(--red)";
+    html+='<div class="card" style="padding:16px;margin-bottom:12px;border-left:4px solid '+corProj+';">';
+    html+='<div style="font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;margin-bottom:8px;">📈 Projeção para fim do mês</div>';
+    html+='<div style="display:flex;justify-content:space-between;align-items:center;">';
+    html+='<div><div style="font-size:28px;font-weight:700;color:'+corProj+';">'+projFimMes+' PD</div>';
+    html+='<div style="font-size:11px;color:var(--gray);">projetado vs meta '+metaNum.toFixed(0)+' PD</div></div>';
+    html+='<div style="font-size:13px;font-weight:700;color:'+corProj+';">'+(diffProj>=0?'+':'')+diffProj.toFixed(0)+' PD</div>';
+    html+='</div></div>';
+  }
+
+  // Fórmula explicativa
+  html+='<div class="card" style="padding:14px;background:#f8fafc;">';
+  html+='<div style="font-size:11px;color:var(--gray);font-weight:600;text-transform:uppercase;margin-bottom:8px;">📐 Fórmula ANS</div>';
+  html+='<div style="font-size:12px;color:var(--navy);line-height:1.8;">';
+  html+='<b>PD anual</b> = vidas × índice ÷ 1.000 = '+pd.vidas.toLocaleString('pt-BR')+' × '+pd.indice+' ÷ 1.000 = <b>'+(pd.vidas*pd.indice/1000).toFixed(0)+' PD/ano</b><br>';
+  html+='<b>Meta mensal</b> = PD anual ÷ 12 = <b>'+metaMensalDias.toFixed(0)+' PD/'+MESES_LABEL[pd.mes-1]+'</b><br>';
+  html+='<b>Meta diária</b> = meta mensal ÷ '+diasDoMes+' dias = <b>'+metaDiaria.toFixed(1)+' pac/dia</b>';
+  html+='</div></div>';
+
+  html+='</div>';
+  el("content").innerHTML=html;
+}
+
 </script>
 </body>
 </html>
