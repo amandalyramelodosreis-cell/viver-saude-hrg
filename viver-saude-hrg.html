@@ -1071,7 +1071,10 @@ function renderRelatorio(){
   }
   var maxBar=Math.max.apply(null,graficoMeses.map(function(m){return m.uti+m.ui;}));
 
-  var eMesAtualRel=(mes===hoje.getMonth()&&ano===hoje.getFullYear());
+  // No modo custom, mes/ano podem não estar definidos
+  var _mes=typeof mes!=="undefined"?mes:hoje.getMonth();
+  var _ano=typeof ano!=="undefined"?ano:hoje.getFullYear();
+  var eMesAtualRel=(_mes===hoje.getMonth()&&_ano===hoje.getFullYear());
   var limiteHoje=eMesAtualRel?hoje:fimMes;
 
   // Diárias por contagem precisa: inclui dia entrada, exclui dia saída
@@ -1137,7 +1140,7 @@ function renderRelatorio(){
   var altaPermInternados=altaPerm.filter(function(p){return !p.dataAlta;}).length;
 
   // Ocupação média diária do período
-  var diasPeriodo=eMesAtualRel?hoje.getDate():Math.max(1,Math.round((fimMes-inicioMes)/86400000)+1);
+  var diasPeriodo=eMesAtualRel?hoje.getDate():Math.max(1,Math.floor((fimMes-inicioMes)/86400000)+1);
   var ocupacaoMedia=(totalDiariasMes/diasPeriodo).toFixed(1);
   var ocupacaoUTIMedia=(totalDiasUTIMes/diasPeriodo).toFixed(1);
 
