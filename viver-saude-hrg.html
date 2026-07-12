@@ -978,29 +978,42 @@ function setRMode(m){S.rMode=m;S.detalhe=null;renderRelatorio();}
 
 
 // ── Cálculo de diárias padronizado ───────────────────────────
+function diasEntre(strA, strB) {
+  // Conta dias entre duas strings YYYY-MM-DD. Inclui dia A, exclui dia B.
+  var a = new Date(strA+"T00:00:00");
+  var b = new Date(strB+"T00:00:00");
+  return Math.max(0, Math.round((b-a)/86400000));
+}
 function calcDiarias(inicioP, fimP, eMesAtual) {
   var agora = new Date();
-  // Usar meio-dia de hoje para evitar arredondamentos de hora
-  var limite = eMesAtual ? new Date(agora.getFullYear(),agora.getMonth(),agora.getDate(),12,0,0) : fimP;
+  // Trabalhar só com strings de data para evitar problemas de hora
+  function toStr(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  var strIni = toStr(inicioP);
+  var strFim = eMesAtual ? toStr(agora) : toStr(fimP);
+  var strFimMes = toStr(fimP);
   var total = 0, uti = 0;
   S.discharged.concat(S.active).forEach(function(p){
     if(!p.dataInternamento) return;
-    var dinStr = toISO(p.dataInternamento);
-    if(!dinStr) return;
-    var din = new Date(dinStr+"T12:00:00");
-    if(din > fimP) return;
-    var dalt;
+    var strDin = toISO(p.dataInternamento);
+    if(!strDin) return;
+    if(strDin > strFimMes) return;
+    var strDalt;
     if(p.dataAlta){
       var ds = toISO(p.dataAlta);
       if(!ds) return;
-      dalt = new Date(ds+"T12:00:00");
+      strDalt = ds;
     } else {
-      dalt = limite;
+      strDalt = strFim;
     }
-    if(dalt < inicioP) return;
-    var ini = din < inicioP ? inicioP : din;
-    var fim = dalt < limite ? dalt : limite;
-    var dias = Math.max(0, Math.floor((fim-ini)/86400000));
+    if(strDalt < strIni) return;
+    var a = strDin < strIni ? strIni : strDin;
+    var b = strDalt > strFim ? strFim : strDalt;
+    // b = dia de saída (não contado), a = dia entrada (contado)
+    // ex: entra 01/07, sai 03/07 → conta 01 e 02 → 2 dias
+    var dias = diasEntre(a, b);
+    // Se ainda internado hoje, conta até hoje inclusive
+    if(!p.dataAlta) dias = diasEntre(a, strFim) + 1;
+    dias = Math.max(0, dias);
     total += dias;
     if(p.dataAlta){
       if(Number(p.diasUTI)>0){
@@ -1011,10 +1024,9 @@ function calcDiarias(inicioP, fimP, eMesAtual) {
       if(p.setor==="UTI") uti += dias;
     }
   });
-  var agora2 = new Date();
-  var divisor = eMesAtual ? agora2.getDate() : (Math.floor((fimP-inicioP)/86400000)+1);
+  var divisor = eMesAtual ? agora.getDate() : diasEntre(strIni, toStr(new Date(fimP.getFullYear(),fimP.getMonth()+1,1)));
   return {total:total, uti:uti, divisor:divisor,
-          media:(total/divisor).toFixed(1), mediaUTI:(uti/divisor).toFixed(1)};
+          media:(total/Math.max(1,divisor)).toFixed(1), mediaUTI:(uti/Math.max(1,divisor)).toFixed(1)};
 }
 function renderRelatorio(){
   var now=new Date();
