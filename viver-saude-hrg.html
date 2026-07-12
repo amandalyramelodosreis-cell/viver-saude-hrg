@@ -978,6 +978,7 @@ function setRMode(m){S.rMode=m;S.detalhe=null;renderRelatorio();}
 
 function renderRelatorio(){
   var now=new Date();
+  var hoje=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59);
   if(S.rMes===null){S.rMes=now.getMonth();S.rAno=now.getFullYear();}
   var all=S.active.concat(S.discharged);
   var pp,pd,inicioMes,fimMes,tituloRel;
