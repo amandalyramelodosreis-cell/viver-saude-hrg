@@ -980,7 +980,8 @@ function setRMode(m){S.rMode=m;S.detalhe=null;renderRelatorio();}
 // ── Cálculo de diárias padronizado ───────────────────────────
 function calcDiarias(inicioP, fimP, eMesAtual) {
   var agora = new Date();
-  var limite = eMesAtual ? new Date(agora.getFullYear(),agora.getMonth(),agora.getDate(),23,59,59) : fimP;
+  // Usar meio-dia de hoje para evitar arredondamentos de hora
+  var limite = eMesAtual ? new Date(agora.getFullYear(),agora.getMonth(),agora.getDate(),12,0,0) : fimP;
   var total = 0, uti = 0;
   S.discharged.concat(S.active).forEach(function(p){
     if(!p.dataInternamento) return;
@@ -999,7 +1000,7 @@ function calcDiarias(inicioP, fimP, eMesAtual) {
     if(dalt < inicioP) return;
     var ini = din < inicioP ? inicioP : din;
     var fim = dalt < limite ? dalt : limite;
-    var dias = Math.max(0, Math.floor((fim-ini)/86400000) + 1);
+    var dias = Math.max(0, Math.floor((fim-ini)/86400000));
     total += dias;
     if(p.dataAlta){
       if(Number(p.diasUTI)>0){
