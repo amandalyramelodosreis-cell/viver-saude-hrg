@@ -356,7 +356,10 @@ function logout(){
 }
 function renderContent(){
   if(S.tab==="novo"||S.editing)        renderForm();
-  else if(S.tab==="relatorio")          renderRelatorio();
+  else if(S.tab==="relatorio"){
+    try{ renderRelatorio(); }
+    catch(e){ el("content").innerHTML='<div style="padding:20px;color:red;font-family:monospace;font-size:12px;"><b>Erro no relatório:</b><br>'+e.message+'<br><pre>'+e.stack+'</pre></div>'; }
+  }
   else if(S.tab==="diario")             renderCensoDiario();
   else if(S.tab==="diario-cm")          renderCensoDiario(true);
   else if(S.tab==="pd1000")             renderPD1000();
