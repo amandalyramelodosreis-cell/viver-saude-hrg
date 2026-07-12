@@ -1502,17 +1502,20 @@ function renderPD1000(){
     return din<=fimMes&&dalt>=inicioMes;
   });
 
-  // Calcular diárias reais do mês
+  // Calcular diárias reais do mês — mesma lógica do relatório
+  // Para cada dia do período, conta quantos pacientes estavam internados
+  var limFim=eMesAtual?hoje:fimMes;
   var diasReais=0;
   ppMes.forEach(function(p){
     var dinStr=toISO(p.dataInternamento);
     var daltStr=p.dataAlta?toISO(p.dataAlta):null;
+    if(!dinStr) return;
     var din=new Date(dinStr+"T12:00:00");
-    var dalt=daltStr?new Date(daltStr+"T12:00:00"):new Date();
-    var ini=din<inicioMes?inicioMes:din;
-    var fim=dalt>fimMes?fimMes:dalt;
-    fim=fim>hoje?hoje:fim;
-    var d=Math.max(0,Math.round((fim-ini)/86400000)+1);
+    var dalt=daltStr?new Date(daltStr+"T12:00:00"):limFim;
+    // Intersecção com o período do mês até hoje
+    var ini=din>inicioMes?din:inicioMes;
+    var fim=dalt<limFim?dalt:limFim;
+    var d=Math.max(0,Math.floor((fim-ini)/86400000)+1);
     diasReais+=d;
   });
 
